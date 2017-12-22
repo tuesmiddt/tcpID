@@ -1,3 +1,6 @@
 [submodule "pynids"]
 	path = pynids
 	url = git@github.com:MITRECND/pynids.git
+[submodule "scapy"]
+	path = scapy
+	url = git@github.com:secdev/scapy.git
