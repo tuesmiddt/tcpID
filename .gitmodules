@@ -1,0 +1,3 @@
+[submodule "pynids"]
+	path = pynids
+	url = git@github.com:MITRECND/pynids.git
