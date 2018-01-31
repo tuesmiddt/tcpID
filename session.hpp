@@ -33,6 +33,46 @@
 #include <netdb.h>
 #endif
 
+#ifndef PCAP_LIVE_DEVICE_LIST_H
+#define PCAP_LIVE_DEVICE_LIST_H
+#include "PcapLiveDeviceList.h"
+#endif
+
+#ifndef NETWORK_UTILS_H
+#define NETWORK_UTILS_H
+#include "NetworkUtils.h"
+#endif
+
+#ifndef MAC_ADDRESS_H
+#define MAC_ADDRESS_H
+#include "MacAddress.h"
+#endif
+
+#ifndef IP_ADDRESS_H
+#define IP_ADDRESS_H
+#include "IpAddress.h"
+#endif
+
+#ifndef ETH_LAYER_H
+#define ETH_LAYER_H
+#include "EthLayer.h"
+#endif
+
+#ifndef IPV4_LAYER_H
+#define IPV4_LAYER_H
+#include "IPv4Layer.h"
+#endif
+
+#ifndef VECTOR
+#define VECTOR
+#include <vector>
+#endif
+
+#ifndef RANDOM
+#define RANDOM
+#include <random>
+#endif
+
 #ifndef SESSION_H
 #define SESSION_H
 
@@ -51,11 +91,32 @@ public:
   std::uint32_t dst;
   std::uint16_t dport;
 
-	TestSession();
+  std::uint32_t iss;
+  std::uint32_t irs;
+
+  pcpp::PcapLiveDevice* dev;
+  pcpp::EthLayer ethLayer = pcpp::EthLayer(pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
+  pcpp::IPv4Layer ipLayer;
+  // pcpp::MacAddress macAddress = pcpp::MacAddress::Zero;
+
+	TestSession(char* target, int port);
+  void cleanUp();
 
 private:
+  std::vector<std::string> offloadTypes;
+  std::vector<std::string> fwRules;
+
+  void makeEthLayer();
+  void makeIPLayer();
+  void setISS();
+  void blockRSTOut();
+  void clearFWRules();
+  void setOffloadTypes();
+  void disableOffload();
+  void enableOffload();
+  void setIface();
 	void setSrcInfo();
-  void setDstInfo(char *target);
+  void setDstInfo(char *target, int port);
 };
 
 

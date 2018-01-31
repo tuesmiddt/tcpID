@@ -1,17 +1,69 @@
 #include "session.hpp"
 
-// struct TestSession * initSession() {
-//   struct TestSession *session = malloc(sizeof(struct TestSession));
-//   session->srcIP = getsrcIP();
-// }
-
-TestSession::TestSession() {
+TestSession::TestSession(char* target, int port) {
   setSrcInfo();
-  char target[] = "www.comp.nus.edu.sg";
-  setDstInfo(target);
+  setDstInfo(target, port);
+  setIface();
+  setOffloadTypes();
+  disableOffload();
+  blockRSTOut();
+  setISS();
+  makeEthLayer();
+  makeIPLayer();
 }
 
-void TestSession::setDstInfo(char *target) {
+
+void TestSession::makeIPLayer() {
+  ipLayer = pcpp::IPv4Layer(
+      pcpp::IPv4Address(std::string(srcIP)),
+      pcpp::IPv4Address(std::string(dstIP))
+    );
+}
+
+void TestSession::setIface() {
+  pcpp::PcapLiveDevice* pcapDev = pcpp::PcapLiveDeviceList::getInstance()
+      .getPcapLiveDeviceByIp(srcIP);
+  if (pcapDev == NULL) {
+    std::printf("Could not find interface with IPv4 address of %s\n", srcIP);
+    exit(-1);
+  }
+
+  // before capturing packets let's print some info about this interface
+  printf("Interface info:\n");
+  // get interface name
+  printf("   Interface name:        %s\n", pcapDev->getName());
+  // get interface description
+  printf("   Interface description: %s\n", pcapDev->getDesc());
+  // get interface MAC address
+  printf("   MAC address:           %s\n", pcapDev->getMacAddress().toString().c_str());
+  // get default gateway for interface
+  printf("   Default gateway:       %s\n", pcapDev->getDefaultGateway().toString().c_str());
+  // get interface MTU
+  printf("   Interface MTU:         %d\n", pcapDev->getMtu());
+  // get DNS server if defined for this interface
+  if (pcapDev->getDnsServers().size() > 0)
+    printf("   DNS server:            %s\n", pcapDev->getDnsServers().at(0).toString().c_str());
+
+
+  if (!pcapDev->open()) {
+    std::printf("Cannot open device\n");
+    exit(-1);
+  }
+
+  dev = pcapDev;
+}
+
+void TestSession::cleanUp() {
+  if (dev != NULL) {
+    dev->close();
+    enableOffload();
+  }
+
+  clearFWRules();
+}
+
+
+void TestSession::setDstInfo(char* target, int port) {
   struct addrinfo hints, *res;
   struct sockaddr_in targetAddr;
   memset(&hints, 0, sizeof(hints));
@@ -23,9 +75,10 @@ void TestSession::setDstInfo(char *target) {
     std::cerr << "Could not get dst info\n";
     exit(-1);
   }
-  std::cout << "hello";
-  memcpy(dstIP, inet_ntoa((*(struct sockaddr_in *) (res->ai_addr)).sin_addr), sizeof(dstIP));
-  memcpy(dstName, res->ai_canonname, sizeof(dstName));
+  std::strcpy(dstIP, inet_ntoa((*(struct sockaddr_in *) (res->ai_addr)).sin_addr));
+  dport = (std::uint16_t) port;
+
+  std::strncpy(dstName, target, _SC_HOST_NAME_MAX);
 }
 
 
@@ -36,6 +89,7 @@ void TestSession::setSrcInfo() {
   // char *myIPAddr = (char *) malloc(INET_ADDRSTRLEN * sizeof(char));
   socklen_t myAddrSize = sizeof(myAddr);
 
+
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     std::cerr << "Could not open socket\n";
     exit(-1);
@@ -44,7 +98,7 @@ void TestSession::setSrcInfo() {
   memset(&googleAddr, 0, sizeof(googleAddr));
   googleAddr.sin_family = AF_INET;
   inet_aton("8.8.8.8", &googleAddr.sin_addr);
-  googleAddr.sin_port = htons(80);
+  googleAddr.sin_port = htons(443);
 
   if (connect(sockfd, (struct sockaddr *) &googleAddr, sizeof(googleAddr)) < 0) {
     std::cerr << "Could not connect to google\n";
@@ -57,8 +111,67 @@ void TestSession::setSrcInfo() {
   }
 
   close(sockfd);
+  std::strcpy(srcIP, inet_ntoa(myAddr.sin_addr));
   memcpy(srcIP, inet_ntoa(myAddr.sin_addr), sizeof(srcIP));
   src = myAddr.sin_addr.s_addr;
+  sport = htons(myAddr.sin_port);
+}
 
-  return;
+void TestSession::setOffloadTypes() {
+  offloadTypes.push_back("gro");
+  offloadTypes.push_back("tso");
+  offloadTypes.push_back("gso");
+}
+
+void TestSession::disableOffload() {
+  for(std::string t: offloadTypes) {
+    char cmd[200];
+    std::sprintf(cmd, "ethtool -K %s %s off", dev->getName(), t.c_str());
+    system(cmd);
+  }
+}
+
+void TestSession::enableOffload() {
+  for(std::string t: offloadTypes) {
+    char cmd[200];
+    std::sprintf(cmd, "ethtool -K %s %s on", dev->getName(), t.c_str());
+    system(cmd);
+  }
+}
+
+void TestSession::blockRSTOut() {
+  char rule[300];
+  std::sprintf(rule, "iptables -A OUTPUT -p tcp --tcp-flags RST RST --sport %d -d %s --dport %d -j DROP",
+      sport, dstIP, dport);
+
+  if (system(rule) == 0) {
+    fwRules.push_back(std::string(rule));
+  }
+  system("iptables -L");
+}
+
+void TestSession::clearFWRules() {
+  for(std::string rule: fwRules) {
+    std::printf("Clearing fw rule: %s\n", rule.c_str());
+    std::string orig = "iptables -A";
+    rule.replace(rule.find(orig), orig.length(), "iptables -D");
+    if (system(rule.c_str()) != 0) {
+      std::printf("FAILED\n");
+    }
+  }
+}
+
+void TestSession::setISS() {
+  std::mt19937 mt_rand(time(0));
+  iss = mt_rand();
+}
+
+void TestSession::makeEthLayer() {
+  double arpResponseTimeMS;
+  pcpp::MacAddress gwMacAddress = pcpp::NetworkUtils::getInstance().getMacAddress(
+      dev->getDefaultGateway(),
+      dev,
+      arpResponseTimeMS);
+
+  ethLayer = pcpp::EthLayer(dev->getMacAddress(), gwMacAddress);
 }
