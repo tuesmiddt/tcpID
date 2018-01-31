@@ -1,10 +1,12 @@
 #include "main.hpp"
+#include "session.hpp"
 
 int main() {
-  char *srcIP = getsrcIP();
-  char *dst
+  struct TestSession Session;
 
-  std::cout << getsrcIP() ;
+  std::cout << Session.srcIP;
+  std::cout << Session.dstIP;
+  std::cout << Session.dstName;
   return 0;
 }
 

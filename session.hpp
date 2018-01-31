@@ -37,7 +37,9 @@
 #define SESSION_H
 
 class TestSession {
-	char dstName[MAXHOSTNAMELEN];
+public:
+
+	char dstName[_SC_HOST_NAME_MAX];
 
 	char srcIP[INET_ADDRSTRLEN];
 	char dstIP[INET_ADDRSTRLEN];
@@ -49,12 +51,12 @@ class TestSession {
   std::uint32_t dst;
   std::uint16_t dport;
 
-public:
 	TestSession();
 
 private:
 	void setSrcInfo();
-}
+  void setDstInfo(char *target);
+};
 
 
 #endif

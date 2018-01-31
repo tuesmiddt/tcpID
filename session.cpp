@@ -1,30 +1,31 @@
 #include "session.hpp"
 
-struct TestSession * initSession() {
-  struct TestSession *session = malloc(sizeof(struct TestSession));
-  session->srcIP = getsrcIP();
-}
+// struct TestSession * initSession() {
+//   struct TestSession *session = malloc(sizeof(struct TestSession));
+//   session->srcIP = getsrcIP();
+// }
 
 TestSession::TestSession() {
   setSrcInfo();
-  setDstInfo();
+  char target[] = "www.comp.nus.edu.sg";
+  setDstInfo(target);
 }
 
-char * setDstInfo(char *target) {
+void TestSession::setDstInfo(char *target) {
   struct addrinfo hints, *res;
+  struct sockaddr_in targetAddr;
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET;
-  hints.ai_flags = AI_PASSIVE;
+  hints.ai_flags = AI_PASSIVE & AI_CANONNAME;
   hints.ai_socktype = SOCK_STREAM;
 
   if (getaddrinfo(target, NULL, &hints, &res) != 0) {
     std::cerr << "Could not get dst info\n";
     exit(-1);
   }
-
-  memcpy(dstIP, inet_ntoa(res->ai_addr->))
-
-
+  std::cout << "hello";
+  memcpy(dstIP, inet_ntoa((*(struct sockaddr_in *) (res->ai_addr)).sin_addr), sizeof(dstIP));
+  memcpy(dstName, res->ai_canonname, sizeof(dstName));
 }
 
 
