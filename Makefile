@@ -1,4 +1,4 @@
-include ~/projects/PcapPlusPlus/Dist/mk/PcapPlusPlus.mk
+include ../PcapPlusPlus/Dist/mk/PcapPlusPlus.mk
 
 
 appname := tcpID
