@@ -63,6 +63,21 @@
 #include "IPv4Layer.h"
 #endif
 
+#ifndef TCP_LAYER_H
+#define TCP_LAYER_H
+#include "TcpLayer.h"
+#endif
+
+#ifndef PCAP_FILTER_H
+#define PCAP_FILTER_H
+#include "PcapFilter.h"
+#endif
+
+#ifndef PLATFORM_SPECIFIC_UTILS_H
+#define PLATFORM_SPECIFIC_UTILS_H
+#include "PlatformSpecificUtils.h"
+#endif
+
 #ifndef VECTOR
 #define VECTOR
 #include <vector>
@@ -73,9 +88,10 @@
 #include <random>
 #endif
 
-#ifndef SESSION_H
-#define SESSION_H
+#ifndef SESSION_HPP
+#define SESSION_HPP
 
+class CAAITest;
 class TestSession {
 public:
 
@@ -94,6 +110,8 @@ public:
   std::uint32_t iss;
   std::uint32_t irs;
 
+  CAAITest *test;
+
   pcpp::PcapLiveDevice* dev;
   pcpp::EthLayer ethLayer = pcpp::EthLayer(pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
   pcpp::IPv4Layer ipLayer;
@@ -101,11 +119,14 @@ public:
 
 	TestSession(char* target, int port);
   void cleanUp();
+  void initCapture();
 
 private:
   std::vector<std::string> offloadTypes;
   std::vector<std::string> fwRules;
 
+  std::string buildFilter();
+  void sendSyn();
   void makeEthLayer();
   void makeIPLayer();
   void setISS();
@@ -118,6 +139,5 @@ private:
 	void setSrcInfo();
   void setDstInfo(char *target, int port);
 };
-
 
 #endif

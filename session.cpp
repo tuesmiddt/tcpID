@@ -1,4 +1,5 @@
 #include "session.hpp"
+#include "caai.hpp"
 
 TestSession::TestSession(char* target, int port) {
   setSrcInfo();
@@ -10,14 +11,56 @@ TestSession::TestSession(char* target, int port) {
   setISS();
   makeEthLayer();
   makeIPLayer();
+  test = new CAAITest(this);
+
+  initCapture();
 }
 
 
-void TestSession::makeIPLayer() {
-  ipLayer = pcpp::IPv4Layer(
-      pcpp::IPv4Address(std::string(srcIP)),
-      pcpp::IPv4Address(std::string(dstIP))
-    );
+void TestSession::initCapture() {
+  // std::string filterString = buildFilter();
+
+  dev->setFilter(buildFilter());
+  dev->startCapture(test->testCallBack, test);
+  PCAP_SLEEP(2);
+  sendSyn();
+  PCAP_SLEEP(5);
+  dev->stopCapture();
+}
+
+std::string TestSession::buildFilter() {
+  pcpp::AndFilter f;
+  std::string filterString;
+
+  pcpp::PortFilter sportFilter(sport, pcpp::SRC_OR_DST);
+  f.addFilter(&sportFilter);
+  pcpp::PortFilter dportFilter(dport, pcpp::SRC_OR_DST);
+  f.addFilter(&dportFilter);
+  pcpp::ProtoFilter tcpFilter(pcpp::TCP);
+  f.addFilter(&tcpFilter);
+  pcpp::IPFilter srcIPFilter(std::string(srcIP), pcpp::SRC_OR_DST);
+  f.addFilter(&srcIPFilter);
+  pcpp::IPFilter dstIPFilter(std::string(dstIP), pcpp::SRC_OR_DST);
+  f.addFilter(&dstIPFilter);
+
+  f.parseToString(filterString);
+  return filterString;
+}
+
+void TestSession::sendSyn() {
+  pcpp::TcpLayer tcpLayer(sport, dport);
+  pcpp::tcphdr *header = tcpLayer.getTcpHeader();
+  header->sequenceNumber = iss;
+  header->synFlag = 1;
+
+  // tcpLayer.computeCalculateFields();
+  pcpp::Packet newPacket(100);
+  newPacket.addLayer(&ethLayer);
+  newPacket.addLayer(&ipLayer);
+  newPacket.addLayer(&tcpLayer);
+  newPacket.computeCalculateFields();
+
+  dev->sendPacket(&newPacket);
 }
 
 void TestSession::setIface() {
@@ -174,4 +217,13 @@ void TestSession::makeEthLayer() {
       arpResponseTimeMS);
 
   ethLayer = pcpp::EthLayer(dev->getMacAddress(), gwMacAddress);
+}
+
+void TestSession::makeIPLayer() {
+  ipLayer = pcpp::IPv4Layer(
+      pcpp::IPv4Address(std::string(srcIP)),
+      pcpp::IPv4Address(std::string(dstIP))
+    );
+
+  ipLayer.getIPv4Header()->timeToLive = 64;
 }
