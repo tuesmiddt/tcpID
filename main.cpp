@@ -1,6 +1,5 @@
 #include "main.hpp"
 #include "session.hpp"
-#include "capture.hpp"
 
 int main() {
   char target[] = "www.comp.nus.edu.sg";

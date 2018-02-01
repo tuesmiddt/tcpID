@@ -83,6 +83,11 @@
 #include <vector>
 #endif
 
+#ifndef PACKET_H
+#define PACKET_H
+#include "Packet.h"
+#endif
+
 #ifndef RANDOM
 #define RANDOM
 #include <random>
@@ -111,6 +116,7 @@ public:
   std::uint32_t irs;
 
   CAAITest* test;
+  std::vector<pcpp::Packet*> history;
 
   pcpp::PcapLiveDevice* dev;
   pcpp::EthLayer* ethLayer = new pcpp::EthLayer(pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
@@ -120,6 +126,7 @@ public:
 	TestSession(char* target, int port);
   void cleanUp();
   void initCapture();
+  void addToHistory(pcpp::Packet* packet);
 
 private:
   std::vector<std::string> offloadTypes;
@@ -127,7 +134,7 @@ private:
 
   std::string buildFilter();
   void sendSyn();
-  void sendTcp(pcpp::TcpLayer *tcpLayer);
+  void sendTcp(pcpp::TcpLayer* tcpLayer);
   void makeEthLayer();
   void makeIPLayer();
   void setISS();

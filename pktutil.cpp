@@ -1,23 +1,22 @@
 #include "pktutil.hpp"
 
-void PktUtil::printPktInfo(pcpp::RawPacket* packet) {
-  pcpp::Packet parsedPacket(packet);
-
-  pcpp::EthLayer* ethernetLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
+void PktUtil::printPktInfo(pcpp::Packet* packet) {
+  pcpp::EthLayer* ethernetLayer = packet->getLayerOfType<pcpp::EthLayer>();
   printf("\nSource MAC address: %s\n", ethernetLayer->getSourceMac().toString().c_str());
   printf("Destination MAC address: %s\n", ethernetLayer->getDestMac().toString().c_str());
   printf("Ether type = 0x%X\n", ntohs(ethernetLayer->getEthHeader()->etherType));
 
-  pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+  pcpp::IPv4Layer* ipLayer = packet->getLayerOfType<pcpp::IPv4Layer>();
   printf("\nSource IP address: %s\n", ipLayer->getSrcIpAddress().toString().c_str());
   printf("Destination IP address: %s\n", ipLayer->getDstIpAddress().toString().c_str());
   printf("IP ID: 0x%X\n", ntohs(ipLayer->getIPv4Header()->ipId));
   printf("TTL: %d\n", ipLayer->getIPv4Header()->timeToLive);
 
-  pcpp::TcpLayer* tcpLayer = parsedPacket.getLayerOfType<pcpp::TcpLayer>();
+  pcpp::TcpLayer* tcpLayer = packet->getLayerOfType<pcpp::TcpLayer>();
 
   printf("\nSource TCP port: %d\n", (int)ntohs(tcpLayer->getTcpHeader()->portSrc));
   printf("Destination TCP port: %d\n", (int)ntohs(tcpLayer->getTcpHeader()->portDst));
+  printf("Sequence No: %llu\n", ntohl(tcpLayer->getTcpHeader()->sequenceNumber));
   printf("Window size: %d\n", (int)ntohs(tcpLayer->getTcpHeader()->windowSize));
   printf("TCP flags: %s\n", printTcpFlags(tcpLayer).c_str());
 

@@ -10,5 +10,9 @@ CAAITest::CAAITest(TestSession* testSession) {
 void CAAITest::testCallBack(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* token) {
   CAAITest *curTest = (CAAITest *)token;
 
-  PktUtil::printPktInfo(packet);
+  pcpp::Packet* parsedPacket = new pcpp::Packet(packet);
+
+  curTest->session->addToHistory(parsedPacket);
+
+  PktUtil::printPktInfo(parsedPacket);
 }

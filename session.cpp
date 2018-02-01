@@ -28,6 +28,12 @@ void TestSession::initCapture() {
   dev->stopCapture();
 }
 
+void TestSession::addToHistory(pcpp::Packet* packet) {
+  history.push_back(packet);
+  std::printf("History size: %d\n", history.size());
+}
+
+
 std::string TestSession::buildFilter() {
   pcpp::AndFilter f;
   std::string filterString;
@@ -55,6 +61,8 @@ void TestSession::sendTcp(pcpp::TcpLayer *tcpLayer) {
   p->computeCalculateFields();
 
   dev->sendPacket(p);
+  delete tcpLayer;
+  delete p;
 }
 
 void TestSession::sendSyn() {

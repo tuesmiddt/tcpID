@@ -37,7 +37,7 @@
 #define PKTUTIL_HPP
 
 namespace PktUtil {
-  void printPktInfo(pcpp::RawPacket* packet);
+  void printPktInfo(pcpp::Packet* packet);
   std::string printTcpOptionType(pcpp::TcpOption optionType);
   std::string printTcpFlags(pcpp::TcpLayer* tcpLayer);
 }
