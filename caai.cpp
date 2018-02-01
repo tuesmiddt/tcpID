@@ -1,77 +1,14 @@
 #include "caai.hpp"
 #include "session.hpp"
+#include "pktutil.hpp"
 
-
-
-CAAITest::CAAITest(TestSession *testSession) {
+CAAITest::CAAITest(TestSession* testSession) {
   std::cout << "New CAAITest created";
   session = testSession;
 }
 
-
 void CAAITest::testCallBack(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* token) {
   CAAITest *curTest = (CAAITest *)token;
 
-  pcpp::Packet parsedPacket(packet);
-
-  pcpp::EthLayer* ethernetLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
-  printf("\nSource MAC address: %s\n", ethernetLayer->getSourceMac().toString().c_str());
-  printf("Destination MAC address: %s\n", ethernetLayer->getDestMac().toString().c_str());
-  printf("Ether type = 0x%X\n", ntohs(ethernetLayer->getEthHeader()->etherType));
-
-  pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
-  printf("\nSource IP address: %s\n", ipLayer->getSrcIpAddress().toString().c_str());
-  printf("Destination IP address: %s\n", ipLayer->getDstIpAddress().toString().c_str());
-  printf("IP ID: 0x%X\n", ntohs(ipLayer->getIPv4Header()->ipId));
-  printf("TTL: %d\n", ipLayer->getIPv4Header()->timeToLive);
-
-  pcpp::TcpLayer* tcpLayer = parsedPacket.getLayerOfType<pcpp::TcpLayer>();
-
-  printf("\nSource TCP port: %d\n", (int)ntohs(tcpLayer->getTcpHeader()->portSrc));
-  printf("Destination TCP port: %d\n", (int)ntohs(tcpLayer->getTcpHeader()->portDst));
-  printf("Window size: %d\n", (int)ntohs(tcpLayer->getTcpHeader()->windowSize));
-  printf("TCP flags: %s\n", printTcpFlags(tcpLayer).c_str());
-
-  printf("TCP options: ");
-  for (pcpp::TcpOptionData* tcpOption = tcpLayer->getFirstTcpOptionData(); tcpOption != NULL; tcpOption = tcpLayer->getNextTcpOptionData(tcpOption))
-  {
-    printf("%s ", printTcpOptionType(tcpOption->getType()).c_str());
-  }
-  printf("\n");
-}
-
-std::string CAAITest::printTcpOptionType(pcpp::TcpOption optionType)
-{
-  switch (optionType)
-  {
-  case pcpp::PCPP_TCPOPT_NOP:
-    return "NOP";
-  case pcpp::PCPP_TCPOPT_TIMESTAMP:
-    return "Timestamp";
-  default:
-    return "Other";
-  }
-}
-
-std::string CAAITest::printTcpFlags(pcpp::TcpLayer* tcpLayer)
-{
-  std::string result = "";
-  if (tcpLayer->getTcpHeader()->synFlag == 1)
-    result += "SYN ";
-  if (tcpLayer->getTcpHeader()->ackFlag == 1)
-    result += "ACK ";
-  if (tcpLayer->getTcpHeader()->pshFlag == 1)
-    result += "PSH ";
-  if (tcpLayer->getTcpHeader()->cwrFlag == 1)
-    result += "CWR ";
-  if (tcpLayer->getTcpHeader()->urgFlag == 1)
-    result += "URG ";
-  if (tcpLayer->getTcpHeader()->eceFlag == 1)
-    result += "ECE ";
-  if (tcpLayer->getTcpHeader()->rstFlag == 1)
-    result += "RST ";
-  if (tcpLayer->getTcpHeader()->finFlag == 1)
-    result += "FIN ";
-
-  return result;
+  PktUtil::printPktInfo(packet);
 }

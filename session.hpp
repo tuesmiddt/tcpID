@@ -110,11 +110,11 @@ public:
   std::uint32_t iss;
   std::uint32_t irs;
 
-  CAAITest *test;
+  CAAITest* test;
 
   pcpp::PcapLiveDevice* dev;
-  pcpp::EthLayer ethLayer = pcpp::EthLayer(pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
-  pcpp::IPv4Layer ipLayer;
+  pcpp::EthLayer* ethLayer = new pcpp::EthLayer(pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
+  pcpp::IPv4Layer* ipLayer;
   // pcpp::MacAddress macAddress = pcpp::MacAddress::Zero;
 
 	TestSession(char* target, int port);
@@ -127,6 +127,7 @@ private:
 
   std::string buildFilter();
   void sendSyn();
+  void sendTcp(pcpp::TcpLayer *tcpLayer);
   void makeEthLayer();
   void makeIPLayer();
   void setISS();

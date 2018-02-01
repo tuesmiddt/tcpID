@@ -44,7 +44,8 @@ caai.o: caai.cpp caai.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/MacAddress.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/IpAddress.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapFilter.h \
- /home/csw/projects/PcapPlusPlus/Dist/header/PlatformSpecificUtils.h
+ /home/csw/projects/PcapPlusPlus/Dist/header/PlatformSpecificUtils.h \
+ pktutil.hpp
 session.o: session.cpp session.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapLiveDeviceList.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/IpAddress.h \
@@ -68,4 +69,22 @@ session.o: session.cpp session.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapFilter.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/PlatformSpecificUtils.h \
  caai.hpp /home/csw/projects/PcapPlusPlus/Dist/header/Packet.h
+pktutil.o: pktutil.cpp pktutil.hpp \
+ /home/csw/projects/PcapPlusPlus/Dist/header/PcapLiveDeviceList.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/IpAddress.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/PcapLiveDevice.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/PcapDevice.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/RawPacket.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/PcapFilter.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/ProtocolType.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/ArpLayer.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/Layer.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/MacAddress.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/PointerVector.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/Packet.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/WinPcapLiveDevice.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/Packet.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/EthLayer.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/IPv4Layer.h \
+ /home/csw/projects/PcapPlusPlus/Dist/header/TcpLayer.h
 filter.o: filter.cpp filter.hpp

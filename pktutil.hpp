@@ -3,6 +3,11 @@
 #include <iostream>
 #endif
 
+#ifndef ARPA_INET_H
+#define ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
 #ifndef PCAP_LIVE_DEVICE_LIST_H
 #define PCAP_LIVE_DEVICE_LIST_H
 #include "PcapLiveDeviceList.h"
@@ -28,16 +33,13 @@
 #include "TcpLayer.h"
 #endif
 
-#ifndef CAAI_HPP
-#define CAAI_HPP
+#ifndef PKTUTIL_HPP
+#define PKTUTIL_HPP
 
-class TestSession;
-class CAAITest {
-public:
-  CAAITest(TestSession *);
-  static void testCallBack(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* token);
-private:
-  TestSession* session;
-};
+namespace PktUtil {
+  void printPktInfo(pcpp::RawPacket* packet);
+  std::string printTcpOptionType(pcpp::TcpOption optionType);
+  std::string printTcpFlags(pcpp::TcpLayer* tcpLayer);
+}
 
 #endif

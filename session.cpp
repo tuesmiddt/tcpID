@@ -21,7 +21,7 @@ void TestSession::initCapture() {
   // std::string filterString = buildFilter();
 
   dev->setFilter(buildFilter());
-  dev->startCapture(test->testCallBack, test);
+  dev->startCapture(CAAITest::testCallBack, test);
   PCAP_SLEEP(2);
   sendSyn();
   PCAP_SLEEP(5);
@@ -47,20 +47,23 @@ std::string TestSession::buildFilter() {
   return filterString;
 }
 
+void TestSession::sendTcp(pcpp::TcpLayer *tcpLayer) {
+  pcpp::Packet* p = new pcpp::Packet(100);
+  p->addLayer(ethLayer);
+  p->addLayer(ipLayer);
+  p->addLayer(tcpLayer);
+  p->computeCalculateFields();
+
+  dev->sendPacket(p);
+}
+
 void TestSession::sendSyn() {
-  pcpp::TcpLayer tcpLayer(sport, dport);
-  pcpp::tcphdr *header = tcpLayer.getTcpHeader();
+  pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(sport, dport);
+  pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = iss;
   header->synFlag = 1;
 
-  // tcpLayer.computeCalculateFields();
-  pcpp::Packet newPacket(100);
-  newPacket.addLayer(&ethLayer);
-  newPacket.addLayer(&ipLayer);
-  newPacket.addLayer(&tcpLayer);
-  newPacket.computeCalculateFields();
-
-  dev->sendPacket(&newPacket);
+  sendTcp(tcpLayer);
 }
 
 void TestSession::setIface() {
@@ -216,14 +219,14 @@ void TestSession::makeEthLayer() {
       dev,
       arpResponseTimeMS);
 
-  ethLayer = pcpp::EthLayer(dev->getMacAddress(), gwMacAddress);
+  ethLayer = new pcpp::EthLayer(dev->getMacAddress(), gwMacAddress);
 }
 
 void TestSession::makeIPLayer() {
-  ipLayer = pcpp::IPv4Layer(
+  ipLayer = new pcpp::IPv4Layer(
       pcpp::IPv4Address(std::string(srcIP)),
       pcpp::IPv4Address(std::string(dstIP))
     );
 
-  ipLayer.getIPv4Header()->timeToLive = 64;
+  ipLayer->getIPv4Header()->timeToLive = 64;
 }
