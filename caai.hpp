@@ -3,6 +3,11 @@
 #include <iostream>
 #endif
 
+#ifndef CSTDINT
+#define CSTDINT
+#include <cstdint>
+#endif
+
 #ifndef PCAP_LIVE_DEVICE_LIST_H
 #define PCAP_LIVE_DEVICE_LIST_H
 #include "PcapLiveDeviceList.h"
@@ -28,6 +33,11 @@
 #include "TcpLayer.h"
 #endif
 
+#ifndef PAYLOAD_LAYER_H
+#define PAYLOAD_LAYER_H
+#include "PayloadLayer.h"
+#endif
+
 #ifndef CAAI_HPP
 #define CAAI_HPP
 
@@ -35,6 +45,9 @@ class TestSession;
 class CaaiTest {
  public:
   int testState = 1;
+
+  std::uint16_t tcpOptMss;
+  std::uint16_t tcpOptWscale;
 
   explicit CaaiTest(TestSession *);
   void testCallBack(pcpp::Packet* packet);
@@ -53,7 +66,9 @@ class CaaiTest {
   static const int DONE = 0;
 
   void sendSyn();
+  void setInitialOpt(pcpp::TcpLayer* synTcpLayer);
   void sendAck(pcpp::TcpLayer* prev);
+  void sendRequest(pcpp::TcpLayer* prev);
   void handleEstablishSession(pcpp::TcpLayer* prev);
   void handleSshHandshake(pcpp::TcpLayer* prev);
   void handlePreDrop(pcpp::TcpLayer* prev);

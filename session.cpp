@@ -71,18 +71,25 @@ void TestSession::updateMaxSeen(pcpp::TcpLayer* prev) {
   }
 }
 
-void TestSession::sendTcp(pcpp::TcpLayer *tcpLayer) {
+void TestSession::sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer) {
   pcpp::Packet* p = new pcpp::Packet(100);
   pcpp::EthLayer* curEthLayer = new pcpp::EthLayer(*ethLayer);
   pcpp::IPv4Layer* curIPLayer = new pcpp::IPv4Layer(*ipLayer);
   p->addLayer(curEthLayer);
   p->addLayer(curIPLayer);
   p->addLayer(tcpLayer);
+  if (payloadLayer != NULL) {
+    p->addLayer(payloadLayer);
+  }
+
   p->computeCalculateFields();
 
   dev->sendPacket(p);
 
   // always free packet after sending
+  if (payloadLayer != NULL) {
+    delete payloadLayer;
+  }
   delete tcpLayer;
   delete curIPLayer;
   delete curEthLayer;
@@ -179,9 +186,7 @@ void TestSession::setSrcInfo() {
   int sockfd;
   struct sockaddr_in googleAddr;
   struct sockaddr_in myAddr;
-  // char *myIPAddr = (char *) malloc(INET_ADDRSTRLEN * sizeof(char));
   socklen_t myAddrSize = sizeof(myAddr);
-
 
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     std::cerr << "Could not open socket\n";

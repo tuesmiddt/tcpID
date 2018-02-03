@@ -133,7 +133,7 @@ class TestSession {
   void cleanUp();
   void initCapture();
   void addToHistory(pcpp::Packet* packet);
-  void sendTcp(pcpp::TcpLayer* tcpLayer);
+  void sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void updateMaxSeen(pcpp::TcpLayer* prev);
 
  private:
