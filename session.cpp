@@ -25,9 +25,9 @@ void TestSession::initCapture() {
   test->startTest();
   while (true) {
     PCAP_SLEEP(5);
-    if (test->checkRestartTest()) {
-      test->startTest();
-    }
+    // if (test->checkRestartTest()) {
+    //   test->startTest();
+    // }
     if (test->getTestDone()) {
       break;
     }

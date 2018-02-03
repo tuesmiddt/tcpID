@@ -115,10 +115,10 @@ class CaaiTest {
   std::uint16_t tcpOptWscale;
 
   explicit CaaiTest(TestSession *);
-  ~CaaiTest() {
-    if (sendWorker != NULL)
-      sendWorker->detach();
-  }
+  // ~CaaiTest() {
+  //   // if (sendWorker != NULL)
+  //     sendWorker.detach();
+  // }
   void testCallBack(pcpp::Packet* packet);
   void startTest();
   bool checkRestartTest();

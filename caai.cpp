@@ -2,14 +2,13 @@
 #include "session.hpp"
 
 CaaiTest::CaaiTest(TestSession* testSession) {
-  std::cout << "New CAAITest created";
   session = testSession;
   tcpOptMss = htons(200);
   tcpOptWscale = 14;
 }
 
 void CaaiTest::startWorker() {
-  sendWorker = new std::thread(&CaaiTest::startWorker, this);
+  sendWorker = new std::thread(&CaaiTest::sendPacketQueue, this);
 }
 
 void CaaiTest::sendPacketQueue() {
@@ -44,6 +43,10 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 
   session->updateMaxSeen(tcpLayer);
 
+  if (tcpLayer->getTcpHeader()->finFlag || tcpLayer->getTcpHeader()->rstFlag) {
+    testState = DONE;
+  }
+
   if (testState == ESTABLISH_SESSION) {
     handleEstablishSession(tcpLayer);
   } else if (testState == SSH_HANDSHAKE) {
@@ -63,12 +66,12 @@ void CaaiTest::handleEstablishSession(pcpp::TcpLayer* prev) {
   pcpp::tcphdr* prevHeader = prev->getTcpHeader();
   if (prevHeader->synFlag && prevHeader->ackFlag) {
     sendRequest(prev);
-    testState++;
+    testState = SSH_HANDSHAKE;
   }
 }
 
 void CaaiTest::handleSshHandshake(pcpp::TcpLayer* prev) {
-    testState++;
+    testState = PRE_DROP;
 }
 
 void CaaiTest::handlePreDrop(pcpp::TcpLayer* prev) {
@@ -76,7 +79,7 @@ void CaaiTest::handlePreDrop(pcpp::TcpLayer* prev) {
 }
 
 void CaaiTest::handlePostDrop(pcpp::TcpLayer* prev) {
-    testState++;
+    testState = DONE;
 }
 
 void CaaiTest::handleDone(pcpp::TcpLayer* prev) {
@@ -157,9 +160,9 @@ void CaaiTest::startTest() {
 }
 
 bool CaaiTest::checkRestartTest() {
-  return testState == 1 ? true : false;
+  return testState == ESTABLISH_SESSION ? true : false;
 }
 
 bool CaaiTest::getTestDone() {
-  return testState >= DONE;
+  return testState == DONE;
 }
