@@ -8,6 +8,31 @@
 #include <cstdint>
 #endif
 
+#ifndef THREAD
+#define THREAD
+#include <thread>
+#endif
+
+#ifndef MUTEX
+#define MUTEX
+#include <mutex>
+#endif
+
+#ifndef QUEUE
+#define QUEUE
+#include <queue>
+#endif
+
+#ifndef CHRONO
+#define CHRONO
+#include <chrono>
+#endif
+
+#ifndef UTILITY
+#define UTILITY
+#include <utility>
+#endif
+
 #ifndef PCAP_LIVE_DEVICE_LIST_H
 #define PCAP_LIVE_DEVICE_LIST_H
 #include "PcapLiveDeviceList.h"
@@ -38,6 +63,46 @@
 #include "PayloadLayer.h"
 #endif
 
+// #ifndef SAFE_QUEUE
+// #define SAFE_QUEUE
+
+// #ifndef MUTEX
+// #define MUTEX
+// #include <mutex>
+// #endif
+
+// #ifndef QUEUE
+// #define QUEUE
+// #include <queue>
+// #endif
+
+// #ifndef CONDITION_VARIABLE
+// #define CONDITION_VARIABLE
+// #include <condition_variable>
+// #endif
+
+// template <class T> class SafeQueue {
+//  public:
+//   SafeQueue(): q(), m(), c() {}
+
+//   void enqueue(T ) {
+//     std::unique_lock<std::mutex> lock(m);
+//     q.push(t);
+//   }
+
+//   void dequeue() {
+
+//   }
+
+
+//  private:
+//   std::queue<T> q;
+//   mutable std::mutex m;
+//   std::condition_variable c;
+// };
+
+// #endif  // SAFE_QUEUE_
+
 #ifndef CAAI_HPP
 #define CAAI_HPP
 
@@ -50,6 +115,10 @@ class CaaiTest {
   std::uint16_t tcpOptWscale;
 
   explicit CaaiTest(TestSession *);
+  ~CaaiTest() {
+    if (sendWorker != NULL)
+      sendWorker->detach();
+  }
   void testCallBack(pcpp::Packet* packet);
   void startTest();
   bool checkRestartTest();
@@ -57,6 +126,12 @@ class CaaiTest {
 
  private:
   int connectionAttempts = 0;
+  int sendDelay = 1000;  // send Delay in milliseconds
+  int sleepCount = 0;
+  int sleepInterval = 100;  // check for changes to send delay every 100 milliseconds
+  std::queue<std::pair <pcpp::TcpLayer*, pcpp::Layer*>> sendQueue;
+  std::mutex sendMutex;
+  std::thread* sendWorker;
 
   TestSession* session;
   static const int ESTABLISH_SESSION = 1;
@@ -65,6 +140,9 @@ class CaaiTest {
   static const int POST_DROP = 4;
   static const int DONE = 0;
 
+  void sendPacketQueue();
+  void startWorker();
+  void enqueuePacket(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void sendSyn();
   void setInitialOpt(pcpp::TcpLayer* synTcpLayer);
   void sendAck(pcpp::TcpLayer* prev);

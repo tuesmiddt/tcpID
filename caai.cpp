@@ -8,9 +8,37 @@ CaaiTest::CaaiTest(TestSession* testSession) {
   tcpOptWscale = 14;
 }
 
-void CaaiTest::testCallBack(pcpp::Packet* packet) {
-  std::cout << "BLAH\n";
+void CaaiTest::startWorker() {
+  sendWorker = new std::thread(&CaaiTest::startWorker, this);
+}
 
+void CaaiTest::sendPacketQueue() {
+  std::unique_lock<std::mutex> lock(sendMutex, std::defer_lock);
+
+  while (true) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleepInterval));
+    sleepCount++;
+    if (sleepCount * sleepInterval >= sendDelay) {
+      sleepCount = 0;
+      lock.lock();
+      unsigned toSend = sendQueue.size();
+      lock.unlock();
+
+      for (unsigned i = 0; i < toSend; i++) {
+        session->sendTcp(sendQueue.front().first, sendQueue.front().second);
+        sendQueue.pop();
+      }
+    }
+  }
+}
+
+void CaaiTest::enqueuePacket(pcpp::TcpLayer* tcpLayer,
+    pcpp::Layer* payloadLayer) {
+  std::pair <pcpp::TcpLayer*, pcpp::Layer*> wrapper(tcpLayer, payloadLayer);
+  sendQueue.push(wrapper);
+}
+
+void CaaiTest::testCallBack(pcpp::Packet* packet) {
   pcpp::TcpLayer* tcpLayer = packet
       ->getLayerOfType<pcpp::TcpLayer>();
 
@@ -67,7 +95,7 @@ void CaaiTest::sendAck(pcpp::TcpLayer* prev) {
       prev->getTcpHeader()->synFlag);
   header->ackFlag = 1;
 
-  session->sendTcp(tcpLayer, NULL);
+  enqueuePacket(tcpLayer, NULL);
 }
 
 void CaaiTest::sendRequest(pcpp::TcpLayer* prev) {
@@ -93,7 +121,7 @@ void CaaiTest::sendRequest(pcpp::TcpLayer* prev) {
 
   session->seq += req->getDataLen();
 
-  session->sendTcp(tcpLayer, req);
+  enqueuePacket(tcpLayer, req);
 }
 
 void CaaiTest::sendSyn() {
@@ -107,7 +135,7 @@ void CaaiTest::sendSyn() {
 
   tcpLayer->computeCalculateFields();
 
-  session->sendTcp(tcpLayer, NULL);
+  enqueuePacket(tcpLayer, NULL);
 }
 
 void CaaiTest::setInitialOpt(pcpp::TcpLayer* synTcpLayer) {
@@ -124,6 +152,7 @@ void CaaiTest::setInitialOpt(pcpp::TcpLayer* synTcpLayer) {
 }
 
 void CaaiTest::startTest() {
+  startWorker();
   sendSyn();
 }
 

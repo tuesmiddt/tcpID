@@ -37,7 +37,7 @@ void TestSession::initCapture() {
 
 void TestSession::addToHistory(pcpp::Packet* packet) {
   history.push_back(packet);
-  std::printf("History size: %d\n", history.size());
+  // std::printf("History size: %d\n", history.size());
 }
 
 void TestSession::sessionCallBack(pcpp::RawPacket* packet,
@@ -46,13 +46,12 @@ void TestSession::sessionCallBack(pcpp::RawPacket* packet,
 
   pcpp::Packet* parsedPacket = new pcpp::Packet(packet);
 
-  PktUtil::printPktInfo(parsedPacket);
+  // PktUtil::printPktInfo(parsedPacket);
   curSession->addToHistory(parsedPacket);
 
   if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
       .toString().compare(curSession->dstIP) == 0) {
     // packet is outgoing
-    std::cout<< "OUT";
   } else if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
       .toString().compare(curSession->srcIP) == 0) {
     // packet is incoming
