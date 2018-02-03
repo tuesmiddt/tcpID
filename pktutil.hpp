@@ -18,6 +18,11 @@
 #include "Packet.h"
 #endif
 
+#ifndef STRING
+#define STRING
+#include <string>
+#endif
+
 #ifndef ETH_LAYER_H
 #define ETH_LAYER_H
 #include "EthLayer.h"
@@ -42,4 +47,4 @@ namespace PktUtil {
   std::string printTcpFlags(pcpp::TcpLayer* tcpLayer);
 }
 
-#endif
+#endif  // PKTUTIL_HPP_

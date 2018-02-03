@@ -1,5 +1,6 @@
 #include "session.hpp"
 #include "caai.hpp"
+#include "pktutil.hpp"
 
 TestSession::TestSession(char* target, int port) {
   setSrcInfo();
@@ -11,7 +12,7 @@ TestSession::TestSession(char* target, int port) {
   setIss();
   makeEthLayer();
   makeIPLayer();
-  test = new CAAITest(this);
+  test = new CaaiTest(this);
 
   initCapture();
 }
@@ -19,10 +20,18 @@ TestSession::TestSession(char* target, int port) {
 
 void TestSession::initCapture() {
   dev->setFilter(buildFilter());
-  dev->startCapture(CAAITest::testCallBack, test);
+  dev->startCapture(TestSession::sessionCallBack, this);
   PCAP_SLEEP(2);
-  sendSyn();
-  PCAP_SLEEP(5);
+  test->startTest();
+  while (true) {
+    PCAP_SLEEP(5);
+    if (test->checkRestartTest()) {
+      test->startTest();
+    }
+    if (test->getTestDone()) {
+      break;
+    }
+  }
   dev->stopCapture();
 }
 
@@ -31,6 +40,54 @@ void TestSession::addToHistory(pcpp::Packet* packet) {
   std::printf("History size: %d\n", history.size());
 }
 
+void TestSession::sessionCallBack(pcpp::RawPacket* packet,
+    pcpp::PcapLiveDevice* dev, void* token) {
+  TestSession *curSession = reinterpret_cast<TestSession*>(token);
+
+  pcpp::Packet* parsedPacket = new pcpp::Packet(packet);
+
+  PktUtil::printPktInfo(parsedPacket);
+  curSession->addToHistory(parsedPacket);
+
+  if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
+      .toString().compare(curSession->dstIP) == 0) {
+    // packet is outgoing
+    std::cout<< "OUT";
+  } else if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
+      .toString().compare(curSession->srcIP) == 0) {
+    // packet is incoming
+    curSession->test->testCallBack(parsedPacket);
+  }
+}
+
+void TestSession::updateMaxSeen(pcpp::TcpLayer* prev) {
+  std::uint32_t rcvSeq = ntohl(prev->getTcpHeader()->sequenceNumber);
+
+  if (rcvSeq > maxSeen) {
+    maxSeen = rcvSeq;
+    if (irs == 0) {
+      irs = rcvSeq;
+    }
+  }
+}
+
+void TestSession::sendTcp(pcpp::TcpLayer *tcpLayer) {
+  pcpp::Packet* p = new pcpp::Packet(100);
+  pcpp::EthLayer* curEthLayer = new pcpp::EthLayer(*ethLayer);
+  pcpp::IPv4Layer* curIPLayer = new pcpp::IPv4Layer(*ipLayer);
+  p->addLayer(curEthLayer);
+  p->addLayer(curIPLayer);
+  p->addLayer(tcpLayer);
+  p->computeCalculateFields();
+
+  dev->sendPacket(p);
+
+  // always free packet after sending
+  delete tcpLayer;
+  delete curIPLayer;
+  delete curEthLayer;
+  delete p;
+}
 
 std::string TestSession::buildFilter() {
   pcpp::AndFilter f;
@@ -49,27 +106,6 @@ std::string TestSession::buildFilter() {
 
   f.parseToString(filterString);
   return filterString;
-}
-
-void TestSession::sendTcp(pcpp::TcpLayer *tcpLayer) {
-  pcpp::Packet* p = new pcpp::Packet(100);
-  p->addLayer(ethLayer);
-  p->addLayer(ipLayer);
-  p->addLayer(tcpLayer);
-  p->computeCalculateFields();
-
-  dev->sendPacket(p);
-  delete tcpLayer;
-  delete p;
-}
-
-void TestSession::sendSyn() {
-  pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(sport, dport);
-  pcpp::tcphdr* header = tcpLayer->getTcpHeader();
-  header->sequenceNumber = iss;
-  header->synFlag = 1;
-
-  sendTcp(tcpLayer);
 }
 
 void TestSession::setIface() {
@@ -130,18 +166,12 @@ void TestSession::setDstInfo(char* target, int port) {
     std::cerr << "Could not get dst info\n";
     exit(-1);
   }
-  // std::strncpy(dstIP, inet_ntoa((*(struct sockaddr_in *) (res->ai_addr)).sin_addr), );
   targetAddr = *(reinterpret_cast<struct sockaddr_in*>(res->ai_addr));
   dstIP = std::string(inet_ntoa(targetAddr.sin_addr));
   dst = ntohl(targetAddr.sin_addr.s_addr);
   dport = static_cast<std::uint16_t>(port);
 
-  // dstIP = std::string(inet_ntoa((*(struct sockaddr_in *)(res->ai_addr)).sin_addr));
-  // dport = (std::uint16_t) port;
-
   dstName = std::string(target);
-
-  // std::strncpy(dstName, target, _SC_HOST_NAME_MAX);
 }
 
 
@@ -179,8 +209,6 @@ void TestSession::setSrcInfo() {
 
   close(sockfd);
   srcIP = std::string(inet_ntoa(myAddr.sin_addr));
-  // std::strcpy(srcIP, inet_ntoa(myAddr.sin_addr));
-  // memcpy(srcIP, inet_ntoa(myAddr.sin_addr), sizeof(srcIP));
   src = ntohl(myAddr.sin_addr.s_addr);
   sport = ntohs(myAddr.sin_port);
 }
@@ -236,6 +264,7 @@ void TestSession::clearFWRules() {
 void TestSession::setIss() {
   std::mt19937 mt_rand(time(0));
   iss = mt_rand();
+  seq = iss;
 }
 
 void TestSession::makeEthLayer() {

@@ -101,9 +101,9 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
-class CAAITest;
+class CaaiTest;
 class TestSession {
-public:
+ public:
   std::string dstName;
 
   std::string srcIP;
@@ -116,29 +116,34 @@ public:
   std::uint32_t dst;
   std::uint16_t dport;
 
-  std::uint32_t iss;
-  std::uint32_t irs;
+  std::uint32_t iss = 0;
+  std::uint32_t seq = 0;
+  std::uint32_t irs = 0;
+  std::uint32_t maxSeen = 0;
 
-  CAAITest* test;
+  CaaiTest* test;
   std::vector<pcpp::Packet*> history;
 
   pcpp::PcapLiveDevice* dev;
-  pcpp::EthLayer* ethLayer = new pcpp::EthLayer(pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
+  pcpp::EthLayer* ethLayer = new pcpp::EthLayer(
+      pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
   pcpp::IPv4Layer* ipLayer;
-  // pcpp::MacAddress macAddress = pcpp::MacAddress::Zero;
 
   TestSession(char* target, int port);
   void cleanUp();
   void initCapture();
   void addToHistory(pcpp::Packet* packet);
+  void sendTcp(pcpp::TcpLayer* tcpLayer);
+  void updateMaxSeen(pcpp::TcpLayer* prev);
 
-private:
+ private:
   std::vector<std::string> offloadTypes;
   std::vector<std::string> fwRules;
 
+
+  static void sessionCallBack(pcpp::RawPacket* packet,
+    pcpp::PcapLiveDevice* dev, void* token);
   std::string buildFilter();
-  void sendSyn();
-  void sendTcp(pcpp::TcpLayer* tcpLayer);
   void makeEthLayer();
   void makeIPLayer();
   void setIss();

@@ -32,12 +32,33 @@
 #define CAAI_HPP
 
 class TestSession;
-class CAAITest {
-public:
-  CAAITest(TestSession *);
-  static void testCallBack(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* token);
-private:
+class CaaiTest {
+ public:
+  int testState = 1;
+
+  explicit CaaiTest(TestSession *);
+  void testCallBack(pcpp::Packet* packet);
+  void startTest();
+  bool checkRestartTest();
+  bool getTestDone();
+
+ private:
+  int connectionAttempts = 0;
+
   TestSession* session;
+  static const int ESTABLISH_SESSION = 1;
+  static const int SSH_HANDSHAKE = 2;
+  static const int PRE_DROP = 3;
+  static const int POST_DROP = 4;
+  static const int DONE = 0;
+
+  void sendSyn();
+  void sendAck(pcpp::TcpLayer* prev);
+  void handleEstablishSession(pcpp::TcpLayer* prev);
+  void handleSshHandshake(pcpp::TcpLayer* prev);
+  void handlePreDrop(pcpp::TcpLayer* prev);
+  void handlePostDrop(pcpp::TcpLayer* prev);
+  void handleDone(pcpp::TcpLayer* prev);
 };
 
-#endif
+#endif  // CAAI_HPP_

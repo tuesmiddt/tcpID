@@ -43,8 +43,7 @@ caai.o: caai.cpp caai.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/MacAddress.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/IpAddress.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapFilter.h \
- /home/csw/projects/PcapPlusPlus/Dist/header/PlatformSpecificUtils.h \
- pktutil.hpp
+ /home/csw/projects/PcapPlusPlus/Dist/header/PlatformSpecificUtils.h
 session.o: session.cpp session.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapLiveDeviceList.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/IpAddress.h \
@@ -67,7 +66,8 @@ session.o: session.cpp session.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/TcpLayer.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapFilter.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/PlatformSpecificUtils.h \
- /home/csw/projects/PcapPlusPlus/Dist/header/Packet.h caai.hpp
+ /home/csw/projects/PcapPlusPlus/Dist/header/Packet.h caai.hpp \
+ pktutil.hpp
 pktutil.o: pktutil.cpp pktutil.hpp \
  /home/csw/projects/PcapPlusPlus/Dist/header/PcapLiveDeviceList.h \
  /home/csw/projects/PcapPlusPlus/Dist/header/IpAddress.h \
