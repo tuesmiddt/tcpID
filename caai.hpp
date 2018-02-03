@@ -8,6 +8,11 @@
 #include <cstdint>
 #endif
 
+#ifndef CTIME
+#define CTIME
+#include <ctime>
+#endif
+
 #ifndef THREAD
 #define THREAD
 #include <thread>
@@ -145,6 +150,7 @@ class CaaiTest {
   void enqueuePacket(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void sendSyn();
   void setInitialOpt(pcpp::TcpLayer* synTcpLayer);
+  void setTSOpt(pcpp::TcpLayer* targetTcpLayer, pcpp::TcpLayer* prevTcpLayer);
   void sendAck(pcpp::TcpLayer* prev);
   void sendRequest(pcpp::TcpLayer* prev);
   void handleEstablishSession(pcpp::TcpLayer* prev);

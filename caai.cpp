@@ -88,6 +88,7 @@ void CaaiTest::handleDone(pcpp::TcpLayer* prev) {
 
 void CaaiTest::sendAck(pcpp::TcpLayer* prev) {
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
+  setTSOpt(tcpLayer, prev);
   pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = htonl(session->seq);
   header->windowSize = htons(200);
@@ -103,6 +104,7 @@ void CaaiTest::sendAck(pcpp::TcpLayer* prev) {
 
 void CaaiTest::sendRequest(pcpp::TcpLayer* prev) {
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
+  setTSOpt(tcpLayer, prev);
   pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = htonl(session->seq);
   header->windowSize = htons(200);
@@ -143,15 +145,35 @@ void CaaiTest::sendSyn() {
 
 void CaaiTest::setInitialOpt(pcpp::TcpLayer* synTcpLayer) {
   pcpp::tcphdr* header = synTcpLayer->getTcpHeader();
+  setTSOpt(synTcpLayer, NULL);
   synTcpLayer->addTcpOption(pcpp::TCPOPT_MSS, 4,
       reinterpret_cast<std::uint8_t*>(&tcpOptMss));
   synTcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_WINDOW, 3,
       reinterpret_cast<std::uint8_t*>(&tcpOptWscale));
 
+
   std::uint16_t* zero = new std::uint16_t(0);
   synTcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1,
       reinterpret_cast<std::uint8_t*>(&zero));
   delete zero;
+}
+
+void CaaiTest::setTSOpt(pcpp::TcpLayer* targetTcpLayer,
+    pcpp::TcpLayer* prevTcpLayer) {
+  pcpp::TcpOptionData* prevTSOpt;
+  // Set TSval
+  pcpp::TcpOptionData* tsOption = targetTcpLayer->addTcpOption(
+      pcpp::PCPP_TCPOPT_TIMESTAMP, 10, NULL);
+  tsOption->setValue<std::uint32_t>(htonl(static_cast<std::uint32_t>(
+      std::time(NULL))), 0);
+
+  if ((prevTcpLayer != NULL) && (prevTcpLayer->getTcpHeader()->ackFlag) &&
+        ((prevTSOpt = prevTcpLayer->
+            getTcpOptionData(pcpp::PCPP_TCPOPT_TIMESTAMP)) != NULL)) {
+    // Set TSecr
+    tsOption->setValue<std::uint32_t>(
+        prevTSOpt->getValueAs<std::uint32_t>(4), 4);
+  }
 }
 
 void CaaiTest::startTest() {
