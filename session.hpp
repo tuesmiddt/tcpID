@@ -23,6 +23,11 @@
 #include <cstdint>
 #endif
 
+#ifndef STRING
+#define STRING
+#include <string>
+#endif
+
 #ifndef UNISTD_H
 #define UNISTD_H
 #include <unistd.h>
@@ -99,13 +104,12 @@
 class CAAITest;
 class TestSession {
 public:
+  std::string dstName;
 
-	char dstName[_SC_HOST_NAME_MAX];
+  std::string srcIP;
+  std::string dstIP;
 
-	char srcIP[INET_ADDRSTRLEN];
-	char dstIP[INET_ADDRSTRLEN];
-
-	int sockfd;
+  int sockfd;
 
   std::uint32_t src;
   std::uint16_t sport;
@@ -123,7 +127,7 @@ public:
   pcpp::IPv4Layer* ipLayer;
   // pcpp::MacAddress macAddress = pcpp::MacAddress::Zero;
 
-	TestSession(char* target, int port);
+  TestSession(char* target, int port);
   void cleanUp();
   void initCapture();
   void addToHistory(pcpp::Packet* packet);
@@ -137,15 +141,15 @@ private:
   void sendTcp(pcpp::TcpLayer* tcpLayer);
   void makeEthLayer();
   void makeIPLayer();
-  void setISS();
-  void blockRSTOut();
+  void setIss();
+  void blockRstOut();
   void clearFWRules();
   void setOffloadTypes();
   void disableOffload();
   void enableOffload();
   void setIface();
-	void setSrcInfo();
+  void setSrcInfo();
   void setDstInfo(char *target, int port);
 };
 
-#endif
+#endif  // SESSION_HPP_
