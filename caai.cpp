@@ -5,6 +5,51 @@ CaaiTest::CaaiTest(TestSession* testSession) {
   session = testSession;
   tcpOptMss = htons(200);
   tcpOptWscale = 14;
+  streamReassembly = new pcpp::TcpReassembly(CaaiTest::reassemblyCallback,
+    this, NULL, NULL);
+}
+
+void CaaiTest::reassemblyCallback(
+    int side, pcpp::TcpStreamData data, void* cookie) {
+  CaaiTest* curTest = static_cast<CaaiTest*>(cookie);
+  if (data.getConnectionData().dstIP.toString().compare(
+        curTest->session->srcIP) == 0) {
+    char* dataPtr = reinterpret_cast<char*>(data.getData());
+    curTest->rcvBuffer.write(dataPtr, data.getDataLength());
+  }
+}
+
+// return no. of bytes written
+int CaaiTest::sslWriteCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
+  // REMEMBER TO use wolfSSL_SetIOWriteCtx(ssl, buffer_data) if ctx needed
+  CaaiTest* curTest = static_cast<CaaiTest*>(ctx);
+  int written = 0;
+  std::stringstream writeStream;
+  writeStream.write(buf, sz);
+
+  for (unsigned i = 0; i < (sz / (curTest->tcpOptMss)) + 1; i++) {
+    int toSend = (sz - written) > curTest->tcpOptMss ?
+        curTest->tcpOptMss : (sz - written);
+    char* sendBuf = new char[toSend];
+    int sending = writeStream.readsome(sendBuf, toSend);
+    if (sending != toSend) {
+      std::cerr << "ERROR WRITING SSL DATA";
+      exit(-1);
+    }
+
+    curTest->sendData(sendBuf, sending);
+    written += sending;
+  }
+
+  return written;
+}
+
+// return no. of bytes read
+int CaaiTest::sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
+  // REMEMBER TO use wolfSSL_SetIOReadCtx(ssl, buffer_data) if ctx needed
+  CaaiTest* curTest = static_cast<CaaiTest*>(ctx);
+  int read = curTest->rcvBuffer.readsome(buf, sz);
+  return read;
 }
 
 void CaaiTest::startWorker() {
@@ -43,8 +88,22 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 
   session->updateMaxSeen(tcpLayer);
 
+  streamReassembly->ReassemblePacket(*packet);
+
   if (tcpLayer->getTcpHeader()->finFlag || tcpLayer->getTcpHeader()->rstFlag) {
     testState = DONE;
+    std::cout << "======TEST DONE=====";
+    //
+    unsigned read = 10;
+    char printer[200];
+    while (read != 0){
+      bzero(printer, sizeof(printer));
+      read = rcvBuffer.readsome(printer, 199);
+      std::printf("%s", printer);
+    }
+
+    // std::cout << rcvBuffer.str();
+    std::cout << "\n\n";
   }
 
   if (testState == ESTABLISH_SESSION) {
@@ -102,6 +161,43 @@ void CaaiTest::sendAck(pcpp::TcpLayer* prev) {
   enqueuePacket(tcpLayer, NULL);
 }
 
+// send data datalen bytes of data from buf. Will use last received packet for info
+void CaaiTest::sendData(char* buf, int dataLen) {
+  if (dataLen > tcpOptMss) {
+    std::cerr << "TRIED TO SEND TOO MUCH DATA";
+    exit(-1);
+  }
+
+  pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
+  // pcpp::TcpLayer* prev = SOME_WAY_TO_GET_LAST_RECEIVED_PACKAET!!!
+  pcpp::TcpLayer* prev = tcpLayer;
+
+  setTSOpt(tcpLayer, prev);
+
+  pcpp::tcphdr* header = tcpLayer->getTcpHeader();
+  header->sequenceNumber = htonl(session->seq);
+  header->windowSize = htons(200);
+
+  header->ackNumber = htonl(
+      ntohl(prev->getTcpHeader()->sequenceNumber) +
+      prev->getLayerPayloadSize() +
+      prev->getTcpHeader()->synFlag);
+
+  header->ackFlag = 1;
+  header->pshFlag = 1;
+
+  char data[tcpOptMss] = {0};
+  memcpy(data, buf, dataLen);
+
+  pcpp::PayloadLayer* req = new pcpp::PayloadLayer(
+    reinterpret_cast<std::uint8_t*>(data), std::strlen(data), true);
+
+  session->seq += req->getDataLen();
+
+  enqueuePacket(tcpLayer, req);
+  delete buf;
+}
+
 void CaaiTest::sendRequest(pcpp::TcpLayer* prev) {
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
   setTSOpt(tcpLayer, prev);
@@ -150,7 +246,6 @@ void CaaiTest::setInitialOpt(pcpp::TcpLayer* synTcpLayer) {
       reinterpret_cast<std::uint8_t*>(&tcpOptMss));
   synTcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_WINDOW, 3,
       reinterpret_cast<std::uint8_t*>(&tcpOptWscale));
-
 
   std::uint16_t* zero = new std::uint16_t(0);
   synTcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1,

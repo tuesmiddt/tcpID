@@ -1,12 +1,11 @@
 include ../PcapPlusPlus/Dist/mk/PcapPlusPlus.mk
 
-
 appname := tcpID
 
 CXX := g++ $(PCAPPP_INCLUDES)
 CXXFLAGS := -std=c++11 -g
 LDFLAGS := $(PCAPPP_LIBS_DIR) -static-libstdc++
-LDLIBS := $(PCAPPP_LIBS)
+LDLIBS := $(PCAPPP_LIBS) -lwolfssl
 
 
 srcfiles := $(shell find . -name "*.cpp")
