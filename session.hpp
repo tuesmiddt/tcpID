@@ -142,6 +142,7 @@ class TestSession {
   void sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void updateMaxSeen(pcpp::TcpLayer* prev);
   void resendLastPacket();
+  pcpp::Packet* getLastReceivedPacket();
 
  private:
   std::vector<std::string> offloadTypes;

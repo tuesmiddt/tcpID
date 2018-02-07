@@ -101,6 +101,10 @@ void TestSession::resendLastPacket() {
   dev->sendPacket(p);
 }
 
+pcpp::Packet* TestSession::getLastReceivedPacket() {
+  return receiveHistory->getMax();
+}
+
 std::string TestSession::buildFilter() {
   pcpp::AndFilter f;
   std::string filterString;

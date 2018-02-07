@@ -209,8 +209,8 @@ void CaaiTest::sendData(char* buf, int dataLen) {
   }
 
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
-  // pcpp::TcpLayer* prev = SOME_WAY_TO_GET_LAST_RECEIVED_PACKAET!!!
-  pcpp::TcpLayer* prev = tcpLayer;
+  pcpp::TcpLayer* prev = session->getLastReceivedPacket()
+      ->getLayerOfType<pcpp::TcpLayer>();
 
   setTSOpt(tcpLayer, prev);
 
