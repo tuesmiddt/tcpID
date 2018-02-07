@@ -56,7 +56,7 @@ int CaaiTest::sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
 void CaaiTest::startWorker() {
   workQueue = true;
   startTime = std::chrono::high_resolution_clock::now()
-      + std::chrono::milliseconds(500);  // Offset by half a second for window splitting
+      - std::chrono::milliseconds(500);  // Offset by half a second for window splitting
   sendWorker = new std::thread(&CaaiTest::sendPacketQueue, this);
 }
 
@@ -132,9 +132,14 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
     } else {
       curCwnd++;
     }
+  // } else if (resent == 0 &&
+  //     ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+    // session->resendLastPacket();  // described in paper to deal with f-rto but wonky
   } else if (ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
     testState = POST_DROP;
     startWorker();
+    resent = 1;
+    // return;
   }
 
   handlePacket(tcpLayer);

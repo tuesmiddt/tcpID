@@ -33,6 +33,11 @@
 #include <chrono>
 #endif
 
+#ifndef CMATH
+#define CMATH
+#include <cmath>
+#endif
+
 #ifndef UTILITY
 #define UTILITY
 #include <utility>
@@ -165,6 +170,7 @@ class CaaiTest {
   int curRttCount = 0;
   int curCwnd = 0;
   int mss;
+  int resent = 0;
   std::uint32_t dropSeq;
   int cwndThresh = 512;
   bool workQueue;

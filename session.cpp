@@ -96,6 +96,11 @@ void TestSession::sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer) {
   delete p;
 }
 
+void TestSession::resendLastPacket() {
+  pcpp::Packet* p = sendHistory->getMax();
+  dev->sendPacket(p);
+}
+
 std::string TestSession::buildFilter() {
   pcpp::AndFilter f;
   std::string filterString;
