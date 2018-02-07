@@ -23,7 +23,7 @@ void PktUtil::printPktInfo(pcpp::Packet* packet) {
       static_cast<int>(ntohs(tcpLayer->getTcpHeader()->portSrc)));
   printf("Destination TCP port: %d\n",
       static_cast<int>(ntohs(tcpLayer->getTcpHeader()->portDst)));
-  printf("Sequence No: %llu\n",
+  printf("Sequence No: %u\n",
       ntohl(tcpLayer->getTcpHeader()->sequenceNumber));
   printf("Window size: %d\n",
       static_cast<int>(ntohs(tcpLayer->getTcpHeader()->windowSize)));

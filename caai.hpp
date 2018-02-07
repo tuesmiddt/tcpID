@@ -13,14 +13,14 @@
 #include <ctime>
 #endif
 
+#ifndef VECTOR
+#define VECTOR
+#include <vector>
+#endif
+
 #ifndef THREAD
 #define THREAD
 #include <thread>
-#endif
-
-#ifndef MUTEX
-#define MUTEX
-#include <mutex>
 #endif
 
 #ifndef QUEUE
@@ -38,6 +38,11 @@
 #include <utility>
 #endif
 
+#ifndef CLIMITS
+#define CLIMITS
+#include <climits>
+#endif
+
 #ifndef SSTREAM
 #define SSTREAM
 #include <sstream>
@@ -46,6 +51,11 @@
 #ifndef ISTREAM
 #define ISTREAM
 #include <istream>
+#endif
+
+#ifndef ARPA_INET_H
+#define ARPA_INET_H
+#include <arpa/inet.h>
 #endif
 
 #ifndef PCAP_LIVE_DEVICE_LIST_H
@@ -152,8 +162,17 @@ class CaaiTest {
   int sendDelay = 1000;  // send Delay in milliseconds
   int sleepCount = 0;
   int sleepInterval = 100;  // check for changes to send delay every 100 milliseconds
+  int curRttCount = 0;
+  int curCwnd = 0;
+  int mss;
+  std::uint32_t dropSeq;
+  int cwndThresh = 512;
+  bool workQueue;
+  std::uint16_t tcpOptWSize = 65535;
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+  std::vector<std::pair <int, int>> testResults;
+
   std::queue<std::pair <pcpp::TcpLayer*, pcpp::Layer*>> sendQueue;
-  std::mutex sendMutex;
   std::thread* sendWorker;
   pcpp::TcpReassembly* streamReassembly;
   std::stringstream rcvBuffer;
@@ -162,26 +181,31 @@ class CaaiTest {
   static const int ESTABLISH_SESSION = 1;
   static const int SSH_HANDSHAKE = 2;
   static const int PRE_DROP = 3;
-  static const int POST_DROP = 4;
-  static const int DONE = 0;
+  static const int DROP_WAIT = 4;
+  static const int POST_DROP = 5;
+  static const int DONE = 6;
 
   static void reassemblyCallback(
       int side, pcpp::TcpStreamData data, void* cookie);
   // void makeRcvBuffer();
   void sendPacketQueue();
   void startWorker();
+  void stopWorker();
   void enqueuePacket(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void sendSyn();
   void setInitialOpt(pcpp::TcpLayer* synTcpLayer);
   void setTSOpt(pcpp::TcpLayer* targetTcpLayer, pcpp::TcpLayer* prevTcpLayer);
+  void addNopOpt(pcpp::TcpLayer* tcpLayer);
   void sendAck(pcpp::TcpLayer* prev);
   void sendData(char* buf, int dataLen);
   void sendRequest(pcpp::TcpLayer* prev);
+  void handlePacket(pcpp::TcpLayer* prev);
   void handleEstablishSession(pcpp::TcpLayer* prev);
   void handleSshHandshake(pcpp::TcpLayer* prev);
   void handlePreDrop(pcpp::TcpLayer* prev);
   void handlePostDrop(pcpp::TcpLayer* prev);
   void handleDone(pcpp::TcpLayer* prev);
+  void printResults();
 };
 
 #endif  // CAAI_HPP_

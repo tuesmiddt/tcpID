@@ -13,6 +13,8 @@ TestSession::TestSession(char* target, int port) {
   makeEthLayer();
   makeIPLayer();
   test = new CaaiTest(this);
+  sendHistory = new History();
+  receiveHistory = new History();
 
   initCapture();
 }
@@ -32,12 +34,12 @@ void TestSession::initCapture() {
       break;
     }
   }
+
   dev->stopCapture();
 }
 
-void TestSession::addToHistory(pcpp::Packet* packet) {
-  history.push_back(packet);
-  // std::printf("History size: %d\n", history.size());
+void TestSession::addToHistory(History* h, pcpp::Packet* packet) {
+  h->push(packet);
 }
 
 void TestSession::sessionCallBack(pcpp::RawPacket* packet,
@@ -47,14 +49,15 @@ void TestSession::sessionCallBack(pcpp::RawPacket* packet,
   pcpp::Packet* parsedPacket = new pcpp::Packet(packet);
 
   // PktUtil::printPktInfo(parsedPacket);
-  curSession->addToHistory(parsedPacket);
 
   if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
       .toString().compare(curSession->dstIP) == 0) {
-    // packet is outgoing
+    curSession->addToHistory(curSession->sendHistory, parsedPacket);
   } else if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
       .toString().compare(curSession->srcIP) == 0) {
     // packet is incoming
+    curSession->addToHistory(curSession->receiveHistory, parsedPacket);
+
     curSession->test->testCallBack(parsedPacket);
   }
 }
@@ -86,9 +89,7 @@ void TestSession::sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer) {
   dev->sendPacket(p);
 
   // always free packet after sending
-  if (payloadLayer != NULL) {
-    delete payloadLayer;
-  }
+  delete payloadLayer;
   delete tcpLayer;
   delete curIPLayer;
   delete curEthLayer;

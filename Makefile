@@ -2,7 +2,7 @@ include ../PcapPlusPlus/Dist/mk/PcapPlusPlus.mk
 
 appname := tcpID
 
-CXX := g++ $(PCAPPP_INCLUDES)
+CXX := g++ $(PCAPPP_INCLUDES) -Wall
 CXXFLAGS := -std=c++11 -g
 LDFLAGS := $(PCAPPP_LIBS_DIR) -static-libstdc++
 LDLIBS := $(PCAPPP_LIBS) -lwolfssl

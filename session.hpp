@@ -28,6 +28,11 @@
 #include <string>
 #endif
 
+#ifndef PRIORITY_QUEUE
+#define PRIORITY_QUEUE
+#include <queue>
+#endif
+
 #ifndef UNISTD_H
 #define UNISTD_H
 #include <unistd.h>
@@ -101,6 +106,8 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
+#include "history.hpp"
+
 class CaaiTest;
 class TestSession {
  public:
@@ -122,7 +129,6 @@ class TestSession {
   std::uint32_t maxSeen = 0;
 
   CaaiTest* test;
-  std::vector<pcpp::Packet*> history;
 
   pcpp::PcapLiveDevice* dev;
   pcpp::EthLayer* ethLayer = new pcpp::EthLayer(
@@ -132,14 +138,15 @@ class TestSession {
   TestSession(char* target, int port);
   void cleanUp();
   void initCapture();
-  void addToHistory(pcpp::Packet* packet);
+  void addToHistory(History* h, pcpp::Packet* packet);
   void sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void updateMaxSeen(pcpp::TcpLayer* prev);
 
  private:
   std::vector<std::string> offloadTypes;
   std::vector<std::string> fwRules;
-
+  History* sendHistory;
+  History* receiveHistory;
 
   static void sessionCallBack(pcpp::RawPacket* packet,
     pcpp::PcapLiveDevice* dev, void* token);
