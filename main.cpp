@@ -3,7 +3,7 @@
 
 int main() {
   char target[] = "www.comp.nus.edu.sg";
-  TestSession session(target, 80);
+  TestSession session(target, 443);
 
   std::cout << session.srcIP;
   std::cout << "\n";

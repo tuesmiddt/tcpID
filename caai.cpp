@@ -3,11 +3,61 @@
 
 CaaiTest::CaaiTest(TestSession* testSession) {
   session = testSession;
-  mss = 100;
+  mss = 1460;
   tcpOptMss = htons(mss);
   tcpOptWscale = 14;
   streamReassembly = new pcpp::TcpReassembly(CaaiTest::reassemblyCallback,
     this, NULL, NULL);
+}
+
+void CaaiTest::setupWolfSsl() {
+  wolfSSL_Init();
+  if ((sslCtx = wolfSSL_CTX_new(wolfTLSv1_2_client_method())) == NULL) {
+    std::cerr << "ERROR: failed to create WOLFSSL_CTX\n";
+    exit(-1);
+  }
+
+  if (wolfSSL_CTX_load_verify_locations(sslCtx, caCert.c_str(), NULL) !=
+      SSL_SUCCESS) {
+    std::cerr << "ERROR: failed to load cert file at " << caCert << "\n";
+    exit(-1);
+  }
+
+  wolfSSL_SetIORecv(sslCtx, CaaiTest::sslReadCallback);
+  wolfSSL_SetIOSend(sslCtx, CaaiTest::sslWriteCallback);
+
+  if ((ssl = wolfSSL_new(sslCtx)) == NULL) {
+    std::cerr << "ERROR: failed to create WOLFSSL object\n";
+    exit(-1);
+  }
+
+  wolfSSL_SetIOWriteCtx(ssl, this);
+  wolfSSL_SetIOReadCtx(ssl, this);
+}
+
+void CaaiTest::connectSsl() {
+  char errorString[80];
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  int err;
+  if ((err = wolfSSL_connect(ssl)) != SSL_SUCCESS) {
+    std::cerr << "ERROR: failed to connect to wolfSSL\n";
+    wolfSSL_ERR_error_string(wolfSSL_get_error(ssl, err), errorString);
+    std::cerr << "ERROR: " << errorString << "\n";
+    // exit(-1);
+    return;
+  }
+
+  testState = PRE_DROP;
+  char reqStr[200];
+
+  std::snprintf(reqStr, sizeof(reqStr),
+    "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
+    session->dstName.c_str());
+
+  if (wolfSSL_write(ssl, reqStr, strlen(reqStr)) != strlen(reqStr)) {
+    std::cerr << "ERROR: failed to write ssl";
+    exit(-1);
+  }
 }
 
 void CaaiTest::reassemblyCallback(
@@ -18,6 +68,8 @@ void CaaiTest::reassemblyCallback(
     char* dataPtr = reinterpret_cast<char*>(data.getData());
     curTest->rcvBuffer.write(dataPtr, data.getDataLength());
   }
+
+  std::cout << "readbuf position after write: " << curTest->rcvBuffer.tellp() << "\n";
 }
 
 // return no. of bytes written
@@ -25,8 +77,9 @@ int CaaiTest::sslWriteCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
   // REMEMBER TO use wolfSSL_SetIOWriteCtx(ssl, buffer_data) if ctx needed
   CaaiTest* curTest = static_cast<CaaiTest*>(ctx);
   int written = 0;
-  std::stringstream writeStream;
+  std::stringstream writeStream("");
   writeStream.write(buf, sz);
+  writeStream.seekg(0, writeStream.beg);
 
   for (int i = 0; i < (sz / (curTest->mss)) + 1; i++) {
     int toSend = (sz - written) > curTest->mss ?
@@ -34,7 +87,7 @@ int CaaiTest::sslWriteCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
     char* sendBuf = new char[toSend];
     int sending = writeStream.readsome(sendBuf, toSend);
     if (sending != toSend) {
-      std::cerr << "ERROR WRITING SSL DATA";
+      std::cerr << "ERROR WRITING SSL DATA\n";
       exit(-1);
     }
 
@@ -42,15 +95,29 @@ int CaaiTest::sslWriteCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
     written += sending;
   }
 
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
   return written;
 }
 
 // return no. of bytes read
 int CaaiTest::sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
   // REMEMBER TO use wolfSSL_SetIOReadCtx(ssl, buffer_data) if ctx needed
+
+  std::cout << "trying to read " << sz << "\n";
   CaaiTest* curTest = static_cast<CaaiTest*>(ctx);
-  int read = curTest->rcvBuffer.readsome(buf, sz);
-  return read;
+  std::cout << "readbuf position before read: " << curTest->rcvBuffer.tellg() << "\n";
+
+  int read = 0;
+
+  while (read == 0) {
+    read = curTest->rcvBuffer.readsome(buf, sz);
+  }
+  std::cout << "readbuf position after read: " << curTest->rcvBuffer.tellg() << "\n";\
+  // std::cout << "read bytes count: " << read << "\n";
+
+
+  return read > 0 ? read : -2;
 }
 
 void CaaiTest::startWorker() {
@@ -148,8 +215,8 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 void CaaiTest::handlePacket(pcpp::TcpLayer* prev) {
   if (testState == ESTABLISH_SESSION) {
     handleEstablishSession(prev);
-  } else if (testState == SSH_HANDSHAKE) {
-    handleSshHandshake(prev);
+  } else if (testState == SSL_HANDSHAKE) {
+    handleSslHandshake(prev);
   } else if (testState == PRE_DROP) {
     handlePreDrop(prev);
   } else if (testState == POST_DROP) {
@@ -162,13 +229,17 @@ void CaaiTest::handlePacket(pcpp::TcpLayer* prev) {
 void CaaiTest::handleEstablishSession(pcpp::TcpLayer* prev) {
   pcpp::tcphdr* prevHeader = prev->getTcpHeader();
   if (prevHeader->synFlag && prevHeader->ackFlag) {
-    sendRequest(prev);
-    testState = PRE_DROP;
+    // sendRequest(prev);
+    sendAck(prev);
+    std::thread* sslConn = new std::thread(&CaaiTest::connectSsl, this);
+    sslConn-> detach();
+    testState = SSL_HANDSHAKE;
   }
 }
 
-void CaaiTest::handleSshHandshake(pcpp::TcpLayer* prev) {
-  testState = PRE_DROP;
+void CaaiTest::handleSslHandshake(pcpp::TcpLayer* prev) {
+  sendAck(prev);
+  // testState = PRE_DROP;
 }
 
 void CaaiTest::handlePreDrop(pcpp::TcpLayer* prev) {
@@ -213,6 +284,8 @@ void CaaiTest::sendData(char* buf, int dataLen) {
       ->getLayerOfType<pcpp::TcpLayer>();
 
   setTSOpt(tcpLayer, prev);
+  addNopOpt(tcpLayer);
+  tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
 
   pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = htonl(session->seq);
@@ -226,11 +299,11 @@ void CaaiTest::sendData(char* buf, int dataLen) {
   header->ackFlag = 1;
   header->pshFlag = 1;
 
-  char data[mss] = {0};
+  char data[mss+1] = {0};
   memcpy(data, buf, dataLen);
 
   pcpp::PayloadLayer* req = new pcpp::PayloadLayer(
-    reinterpret_cast<std::uint8_t*>(data), std::strlen(data), true);
+    reinterpret_cast<std::uint8_t*>(data), dataLen, true);
 
   session->seq += req->getDataLen();
 
@@ -318,6 +391,7 @@ void CaaiTest::addNopOpt(pcpp::TcpLayer* tcpLayer) {
 
 void CaaiTest::startTest() {
   startWorker();
+  setupWolfSsl();
   sendSyn();
 }
 

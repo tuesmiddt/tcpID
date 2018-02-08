@@ -183,9 +183,13 @@ class CaaiTest {
   pcpp::TcpReassembly* streamReassembly;
   std::stringstream rcvBuffer;
 
+  WOLFSSL_CTX* sslCtx = NULL;
+  WOLFSSL* ssl = NULL;
+  std::string caCert = "/etc/ca-certificates/extracted/tls-ca-bundle.pem";
+
   TestSession* session;
   static const int ESTABLISH_SESSION = 1;
-  static const int SSH_HANDSHAKE = 2;
+  static const int SSL_HANDSHAKE = 2;
   static const int PRE_DROP = 3;
   static const int DROP_WAIT = 4;
   static const int POST_DROP = 5;
@@ -207,11 +211,13 @@ class CaaiTest {
   void sendRequest(pcpp::TcpLayer* prev);
   void handlePacket(pcpp::TcpLayer* prev);
   void handleEstablishSession(pcpp::TcpLayer* prev);
-  void handleSshHandshake(pcpp::TcpLayer* prev);
+  void handleSslHandshake(pcpp::TcpLayer* prev);
   void handlePreDrop(pcpp::TcpLayer* prev);
   void handlePostDrop(pcpp::TcpLayer* prev);
   void handleDone(pcpp::TcpLayer* prev);
   void printResults();
+  void setupWolfSsl();
+  void connectSsl();
 };
 
 #endif  // CAAI_HPP_
