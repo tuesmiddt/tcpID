@@ -3,7 +3,7 @@
 
 CaaiTest::CaaiTest(TestSession* testSession) {
   session = testSession;
-  mss = 1460;
+  mss = 200;
   tcpOptMss = htons(mss);
   tcpOptWscale = 14;
   streamReassembly = new pcpp::TcpReassembly(CaaiTest::reassemblyCallback,
@@ -48,16 +48,33 @@ void CaaiTest::connectSsl() {
   }
 
   testState = PRE_DROP;
-  char reqStr[200];
 
-  std::snprintf(reqStr, sizeof(reqStr),
-    "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
-    session->dstName.c_str());
+  std::string reqStr = makeGetStr();
 
-  if (wolfSSL_write(ssl, reqStr, strlen(reqStr)) != strlen(reqStr)) {
+  resetRttCount();
+
+  if (wolfSSL_write(ssl, reqStr.c_str(), reqStr.length()) != reqStr.length()) {
     std::cerr << "ERROR: failed to write ssl";
     exit(-1);
   }
+}
+
+std::string CaaiTest::makeGetStr() {
+  char reqStr[500];
+
+  std::snprintf(reqStr, sizeof(reqStr),
+      // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
+      // "GET /sites/default/files/2018-01/2018_Hacker_Report.pdf HTTP/1.1\r\n"
+      "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\n"
+      "Host: %s\r\n"
+      "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0\r\n"
+      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
+      "Accept-Language: en-US,en;q=0.5\r\n"
+      "Cache-Control: max-age=0\r\n"
+      "\r\n",
+      session->dstName.c_str());
+  std::cout << reqStr;
+  return std::string(reqStr);
 }
 
 void CaaiTest::reassemblyCallback(
@@ -69,7 +86,7 @@ void CaaiTest::reassemblyCallback(
     curTest->rcvBuffer.write(dataPtr, data.getDataLength());
   }
 
-  std::cout << "readbuf position after write: " << curTest->rcvBuffer.tellp() << "\n";
+  // std::cout << "readbuf position after write: " << curTest->rcvBuffer.tellp() << "\n";
 }
 
 // return no. of bytes written
@@ -104,16 +121,16 @@ int CaaiTest::sslWriteCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
 int CaaiTest::sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
   // REMEMBER TO use wolfSSL_SetIOReadCtx(ssl, buffer_data) if ctx needed
 
-  std::cout << "trying to read " << sz << "\n";
+  // std::cout << "trying to read " << sz << "\n";
   CaaiTest* curTest = static_cast<CaaiTest*>(ctx);
-  std::cout << "readbuf position before read: " << curTest->rcvBuffer.tellg() << "\n";
+  // std::cout << "readbuf position before read: " << curTest->rcvBuffer.tellg() << "\n";
 
   int read = 0;
 
   while (read == 0) {
     read = curTest->rcvBuffer.readsome(buf, sz);
   }
-  std::cout << "readbuf position after read: " << curTest->rcvBuffer.tellg() << "\n";\
+  // std::cout << "readbuf position after read: " << curTest->rcvBuffer.tellg() << "\n";\
   // std::cout << "read bytes count: " << read << "\n";
 
 
@@ -122,13 +139,18 @@ int CaaiTest::sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
 
 void CaaiTest::startWorker() {
   workQueue = true;
-  startTime = std::chrono::high_resolution_clock::now()
-      - std::chrono::milliseconds(500);  // Offset by half a second for window splitting
+  resetRttCount();
   sendWorker = new std::thread(&CaaiTest::sendPacketQueue, this);
 }
 
 void CaaiTest::stopWorker() {
   workQueue = false;
+}
+
+void CaaiTest::resetRttCount() {
+  startTime = std::chrono::high_resolution_clock::now()
+      - std::chrono::milliseconds(500);  // Offset by half a second for window splitting
+  curRttCount = 0;
 }
 
 void CaaiTest::sendPacketQueue() {
@@ -183,15 +205,16 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 
   if (testState != DROP_WAIT) {
     if (pktRtt > curRttCount) {
+      std::cout << pktRtt << ": " << curCwnd << "\n";
       testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
       if (curCwnd >= cwndThresh && testState < DROP_WAIT) {
         std::printf("DROPPING\n");
         testResults.push_back(std::pair<int, int>(0, 0));  // Mark drop
         testState = DROP_WAIT;
         dropSeq = ntohl(tcpLayer->getTcpHeader()->sequenceNumber);
+        std::printf("\n%llu\n", dropSeq);
         stopWorker();
         curCwnd = 1;
-        curRttCount = 0;
       } else {
         curCwnd = 1;
         curRttCount = pktRtt;
@@ -201,18 +224,18 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
     }
   // } else if (resent == 0 &&
   //     ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
-    // session->resendLastPacket();  // described in paper to deal with f-rto but wonky
+  //   resent = 1;
+  //   session->resendLastPacket();  // described in paper to deal with f-rto but wonky
   } else if (ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
     testState = POST_DROP;
     startWorker();
-    resent = 1;
     // return;
   }
 
-  handlePacket(tcpLayer);
+  handlePacket(packet);
 }
 
-void CaaiTest::handlePacket(pcpp::TcpLayer* prev) {
+void CaaiTest::handlePacket(pcpp::Packet* prev) {
   if (testState == ESTABLISH_SESSION) {
     handleEstablishSession(prev);
   } else if (testState == SSL_HANDSHAKE) {
@@ -226,8 +249,18 @@ void CaaiTest::handlePacket(pcpp::TcpLayer* prev) {
   }
 }
 
-void CaaiTest::handleEstablishSession(pcpp::TcpLayer* prev) {
-  pcpp::tcphdr* prevHeader = prev->getTcpHeader();
+void CaaiTest::handleEstablishSession(pcpp::Packet* prev) {
+  pcpp::TcpLayer* prevTcp = prev->getLayerOfType<pcpp::TcpLayer>();
+  pcpp::tcphdr* prevHeader = prevTcp->getTcpHeader();
+
+  for (pcpp::TcpOptionData* tcpOption = prevTcp->getFirstTcpOptionData();
+      tcpOption != NULL;
+      tcpOption = prevTcp->getNextTcpOptionData(tcpOption)) {
+    if (tcpOption->getType() == pcpp::PCPP_TCPOPT_TIMESTAMP) {
+      tsEnabled = true;
+    }
+  }
+
   if (prevHeader->synFlag && prevHeader->ackFlag) {
     // sendRequest(prev);
     sendAck(prev);
@@ -237,36 +270,47 @@ void CaaiTest::handleEstablishSession(pcpp::TcpLayer* prev) {
   }
 }
 
-void CaaiTest::handleSslHandshake(pcpp::TcpLayer* prev) {
+void CaaiTest::handleSslHandshake(pcpp::Packet* prev) {
   sendAck(prev);
   // testState = PRE_DROP;
 }
 
-void CaaiTest::handlePreDrop(pcpp::TcpLayer* prev) {
+void CaaiTest::handlePreDrop(pcpp::Packet* prev) {
   sendAck(prev);
 }
 
-void CaaiTest::handlePostDrop(pcpp::TcpLayer* prev) {
+void CaaiTest::handlePostDrop(pcpp::Packet* prev) {
   sendAck(prev);
 }
 
-void CaaiTest::handleDone(pcpp::TcpLayer* prev) {
+void CaaiTest::handleDone(pcpp::Packet* prev) {
   return;
 }
 
-void CaaiTest::sendAck(pcpp::TcpLayer* prev) {
+void CaaiTest::sendAck(pcpp::Packet* prev) {
+  pcpp::TcpLayer* prevTcp = prev->getLayerOfType<pcpp::TcpLayer>();
+
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
-  setTSOpt(tcpLayer, prev);
-  addNopOpt(tcpLayer);
-  tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+
+  if (tsEnabled) {
+    setTSOpt(tcpLayer, prevTcp);
+    addNopOpt(tcpLayer);
+    tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+  }
+
   pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = htonl(session->seq);
   header->windowSize = htons(tcpOptWSize);
 
+  int prevDataLen = getDataLen(prev);
+  if (prevDataLen == 0) {
+    delete tcpLayer;
+    return;
+  }
+
   header->ackNumber = htonl(
-      ntohl(prev->getTcpHeader()->sequenceNumber) +
-      prev->getLayerPayloadSize() +
-      prev->getTcpHeader()->synFlag);
+      ntohl(prevTcp->getTcpHeader()->sequenceNumber) +
+      prevDataLen + prevTcp->getTcpHeader()->synFlag);
   header->ackFlag = 1;
 
   enqueuePacket(tcpLayer, NULL);
@@ -280,21 +324,23 @@ void CaaiTest::sendData(char* buf, int dataLen) {
   }
 
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
-  pcpp::TcpLayer* prev = session->getLastReceivedPacket()
-      ->getLayerOfType<pcpp::TcpLayer>();
+  pcpp::Packet* prev = session->getLastReceivedPacket();
+  pcpp::TcpLayer* prevTcp = prev->getLayerOfType<pcpp::TcpLayer>();
 
-  setTSOpt(tcpLayer, prev);
-  addNopOpt(tcpLayer);
-  tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+  if (tsEnabled) {
+    setTSOpt(tcpLayer, prevTcp);
+    addNopOpt(tcpLayer);
+    tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+  }
 
   pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = htonl(session->seq);
   header->windowSize = htons(tcpOptWSize);
 
+  int prevDataLen = getDataLen(prev);
   header->ackNumber = htonl(
-      ntohl(prev->getTcpHeader()->sequenceNumber) +
-      prev->getLayerPayloadSize() +
-      prev->getTcpHeader()->synFlag);
+      ntohl(prevTcp->getTcpHeader()->sequenceNumber) +
+      prevDataLen + prevTcp->getTcpHeader()->synFlag);
 
   header->ackFlag = 1;
   header->pshFlag = 1;
@@ -311,19 +357,23 @@ void CaaiTest::sendData(char* buf, int dataLen) {
   delete buf;
 }
 
-void CaaiTest::sendRequest(pcpp::TcpLayer* prev) {
+void CaaiTest::sendRequest(pcpp::Packet* prev) {
+  pcpp::TcpLayer* prevTcp = prev->getLayerOfType<pcpp::TcpLayer>();
+
   pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
-  setTSOpt(tcpLayer, prev);
-  addNopOpt(tcpLayer);
-  tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+  if (tsEnabled) {
+    setTSOpt(tcpLayer, prevTcp);
+    addNopOpt(tcpLayer);
+    tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+  }
   pcpp::tcphdr* header = tcpLayer->getTcpHeader();
   header->sequenceNumber = htonl(session->seq);
   header->windowSize = htons(tcpOptWSize);
 
+  int prevDataLen = getDataLen(prev);
   header->ackNumber = htonl(
-      ntohl(prev->getTcpHeader()->sequenceNumber) +
-      prev->getLayerPayloadSize() +
-      prev->getTcpHeader()->synFlag);
+      ntohl(prevTcp->getTcpHeader()->sequenceNumber) +
+      prevDataLen + prevTcp->getTcpHeader()->synFlag);
   header->ackFlag = 1;
 
   char reqStr[200];
@@ -381,6 +431,15 @@ void CaaiTest::setTSOpt(pcpp::TcpLayer* targetTcpLayer,
     tsOption->setValue<std::uint32_t>(
         prevTSOpt->getValueAs<std::uint32_t>(4), 4);
   }
+}
+
+int CaaiTest::getDataLen(pcpp::Packet* p) {
+  pcpp::TcpLayer* tcpLayer = p->getLayerOfType<pcpp::TcpLayer>();
+  pcpp::IPv4Layer* ipLayer = p->getLayerOfType<pcpp::IPv4Layer>();
+
+  return ntohs(ipLayer->getIPv4Header()->totalLength) -
+      ipLayer->getIPv4Header()->internetHeaderLength * 4 -
+      tcpLayer->getTcpHeader()->dataOffset * 4;
 }
 
 void CaaiTest::addNopOpt(pcpp::TcpLayer* tcpLayer) {
