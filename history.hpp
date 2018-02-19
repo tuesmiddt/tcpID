@@ -25,7 +25,12 @@
 
 #ifndef UTILITY
 #define UTILITY
-#include <utility>
+#include <tuple>
+#endif
+
+#ifndef CHRONO
+#define CHRONO
+#include <chrono>
 #endif
 
 #ifndef HISTORY_HPP
@@ -36,7 +41,14 @@ class History {
   History();
   int push(pcpp::Packet* packet);
   pcpp::Packet* getMax();
+
+  std::chrono::time_point<std::chrono::high_resolution_clock>
+      getTimeBySeq(std::uint32_t key);
+  std::chrono::time_point<std::chrono::high_resolution_clock>
+      getTimeByAck(std::uint32_t key);
  private:
-  std::map<std::uint32_t, std::pair<pcpp::Packet*, int>> store;
+  std::map<std::uint32_t, std::tuple<pcpp::Packet*,
+      std::chrono::time_point<std::chrono::high_resolution_clock>,
+      int>> store;
 };
 #endif  // HISTORY_HPP_

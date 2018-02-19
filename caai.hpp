@@ -164,13 +164,14 @@ class CaaiTest {
 
  private:
   int connectionAttempts = 0;
-  int sendDelay = 1000;  // send Delay in milliseconds
+  int emuDelay = 1000;  // send Delay in milliseconds
   int sleepCount = 0;
   int sleepInterval = 100;  // check for changes to send delay every 100 milliseconds
   int curRttCount = 0;
   int curCwnd = 0;
   int mss;
   int resent = 0;
+  bool envB = false;
   bool tsEnabled = false;
   std::uint32_t dropSeq;
   int cwndThresh = 512;

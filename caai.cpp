@@ -4,6 +4,7 @@
 CaaiTest::CaaiTest(TestSession* testSession) {
   session = testSession;
   mss = 200;
+  emuDelay = envB ? 800 : 1000;
   tcpOptMss = htons(mss);
   tcpOptWscale = 14;
   streamReassembly = new pcpp::TcpReassembly(CaaiTest::reassemblyCallback,
@@ -159,7 +160,7 @@ void CaaiTest::sendPacketQueue() {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(sleepInterval));
     sleepCount++;
-    if (sleepCount * sleepInterval >= sendDelay) {
+    if (sleepCount * sleepInterval >= emuDelay) {
       sleepCount = 0;
       unsigned toSend = sendQueue.size();
 
@@ -207,6 +208,15 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
     if (pktRtt > curRttCount) {
       std::cout << pktRtt << ": " << curCwnd << "\n";
       testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
+
+      if (testState == PRE_DROP && pktRtt == 4) {
+        emuDelay = 1000;
+      }
+
+      if (testState == POST_DROP && pktRtt == 13) {
+        emuDelay = 1000;
+      }
+
       if (curCwnd >= cwndThresh && testState < DROP_WAIT) {
         std::printf("DROPPING\n");
         testResults.push_back(std::pair<int, int>(0, 0));  // Mark drop
