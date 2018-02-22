@@ -128,6 +128,8 @@ class TestSession {
   std::uint32_t irs = 0;
   std::uint32_t maxSeen = 0;
 
+  std::uint32_t maxAcked = 0;
+
   CaaiTest* test;
 
   pcpp::PcapLiveDevice* dev;

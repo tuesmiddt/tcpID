@@ -174,6 +174,7 @@ class CaaiTest {
   bool envB = false;
   bool tsEnabled = false;
   std::uint32_t dropSeq;
+  std::uint32_t maxSeenAfterRto;
   int cwndThresh = 512;
   bool workQueue;
   std::uint16_t tcpOptWSize = 65535;
@@ -212,6 +213,7 @@ class CaaiTest {
   void setTSOpt(pcpp::TcpLayer* targetTcpLayer, pcpp::TcpLayer* prevTcpLayer);
   void addNopOpt(pcpp::TcpLayer* tcpLayer);
   void sendAck(pcpp::Packet* prev);
+  void sendDupAck(pcpp::Packet* prev);
   void sendData(char* buf, int dataLen);
   void sendRequest(pcpp::Packet* prev);
   void handlePacket(pcpp::Packet* prev);

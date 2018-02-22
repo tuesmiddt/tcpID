@@ -53,6 +53,10 @@ void TestSession::sessionCallBack(pcpp::RawPacket* packet,
   if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
       .toString().compare(curSession->dstIP) == 0) {
     curSession->addToHistory(curSession->sendHistory, parsedPacket);
+    // std::uint32_t pAck = ntohl(parsedPacket
+    //     ->getLayerOfType<pcpp::TcpLayer>()->getTcpHeader()->ackNumber);
+    // if (pAck > curSession->maxAcked)
+    //   curSession->maxAcked = pAck;
   } else if (parsedPacket->getLayerOfType<pcpp::IPv4Layer>()->getDstIpAddress()
       .toString().compare(curSession->srcIP) == 0) {
     // packet is incoming

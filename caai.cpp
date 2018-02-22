@@ -66,7 +66,8 @@ std::string CaaiTest::makeGetStr() {
   std::snprintf(reqStr, sizeof(reqStr),
       // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
       // "GET /sites/default/files/2018-01/2018_Hacker_Report.pdf HTTP/1.1\r\n"
-      "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\n"
+      "GET /test.txt HTTP/1.1\r\n"
+      // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\n"
       "Host: %s\r\n"
       "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0\r\n"
       "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
@@ -183,6 +184,11 @@ void CaaiTest::sendPacketQueue() {
 
 void CaaiTest::enqueuePacket(pcpp::TcpLayer* tcpLayer,
     pcpp::Layer* payloadLayer) {
+
+  std::uint32_t ackNumber = ntohl(tcpLayer->getTcpHeader()->ackNumber);
+  if (ackNumber > session->maxAcked)
+    session->maxAcked = ackNumber;
+
   std::pair <pcpp::TcpLayer*, pcpp::Layer*> wrapper(tcpLayer, payloadLayer);
   sendQueue.push(wrapper);
 }
@@ -193,7 +199,7 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 
   session->updateMaxSeen(tcpLayer);
 
-  streamReassembly->ReassemblePacket(*packet);
+  streamReassembly->reassemblePacket(*packet);
 
   if (tcpLayer->getTcpHeader()->finFlag || tcpLayer->getTcpHeader()->rstFlag) {
     testState = DONE;
@@ -222,6 +228,7 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
         testResults.push_back(std::pair<int, int>(0, 0));  // Mark drop
         testState = DROP_WAIT;
         dropSeq = ntohl(tcpLayer->getTcpHeader()->sequenceNumber);
+        maxSeenAfterRto = dropSeq;
         std::printf("\n%llu\n", dropSeq);
         stopWorker();
         curCwnd = 1;
@@ -290,7 +297,15 @@ void CaaiTest::handlePreDrop(pcpp::Packet* prev) {
 }
 
 void CaaiTest::handlePostDrop(pcpp::Packet* prev) {
-  sendAck(prev);
+  std::uint32_t pktSeq = ntohl(prev->getLayerOfType<pcpp::TcpLayer>()
+    ->getTcpHeader()->sequenceNumber);
+
+  if (maxSeenAfterRto + 10 * mss < pktSeq) {
+    sendDupAck(prev);
+  } else {
+    maxSeenAfterRto = pktSeq;
+    sendAck(prev);
+  }
 }
 
 void CaaiTest::handleDone(pcpp::Packet* prev) {
@@ -321,6 +336,33 @@ void CaaiTest::sendAck(pcpp::Packet* prev) {
   header->ackNumber = htonl(
       ntohl(prevTcp->getTcpHeader()->sequenceNumber) +
       prevDataLen + prevTcp->getTcpHeader()->synFlag);
+  header->ackFlag = 1;
+
+  enqueuePacket(tcpLayer, NULL);
+}
+
+void CaaiTest::sendDupAck(pcpp::Packet* prev) {
+  pcpp::TcpLayer* prevTcp = prev->getLayerOfType<pcpp::TcpLayer>();
+
+  pcpp::TcpLayer* tcpLayer = new pcpp::TcpLayer(session->sport, session->dport);
+
+  if (tsEnabled) {
+    setTSOpt(tcpLayer, prevTcp);
+    addNopOpt(tcpLayer);
+    tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_EOL, 1, 0);
+  }
+
+  pcpp::tcphdr* header = tcpLayer->getTcpHeader();
+  header->sequenceNumber = htonl(session->seq);
+  header->windowSize = htons(tcpOptWSize);
+
+  int prevDataLen = getDataLen(prev);
+  if (prevDataLen == 0) {
+    delete tcpLayer;
+    return;
+  }
+
+  header->ackNumber = htonl(session->maxAcked);
   header->ackFlag = 1;
 
   enqueuePacket(tcpLayer, NULL);
