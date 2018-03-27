@@ -75,7 +75,7 @@ std::string CaaiTest::makeGetStr() {
       "Cache-Control: max-age=0\r\n"
       "\r\n",
       session->dstName.c_str());
-  std::cout << reqStr;
+  // std::cout << reqStr;
   return std::string(reqStr);
 }
 
@@ -166,7 +166,7 @@ void CaaiTest::sendPacketQueue() {
       unsigned toSend = sendQueue.size();
 
       for (unsigned i = 0; i < toSend; i++) {
-        // not sure why acking every packet is problematic with nus servers
+        // not sure why acking every other packet is problematic with nus servers
         // if ((toSend % 2 && i % 2 == 0) || (toSend % 2 == 0 && i % 2)) {
         // if (i % 2 || i + 1 == toSend) {
         if (true) {
@@ -224,12 +224,12 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
       }
 
       if (curCwnd >= cwndThresh && testState < DROP_WAIT) {
-        std::printf("DROPPING\n");
+        // std::printf("DROPPING\n");
         testResults.push_back(std::pair<int, int>(0, 0));  // Mark drop
         testState = DROP_WAIT;
         dropSeq = ntohl(tcpLayer->getTcpHeader()->sequenceNumber);
         maxSeenAfterRto = dropSeq;
-        std::printf("\n%llu\n", dropSeq);
+        // std::printf("\n%llu\n", dropSeq);
         stopWorker();
         curCwnd = 1;
       } else {
@@ -239,10 +239,10 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
     } else {
       curCwnd++;
     }
-  // } else if (resent == 0 &&
-  //     ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
-  //   resent = 1;
-  //   session->resendLastPacket();  // described in paper to deal with f-rto but wonky
+  } else if (resent < 1 &&
+      ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+    resent++;
+    session->resendLastPacket();  // described in paper to deal with f-rto but wonky
   } else if (ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
     testState = POST_DROP;
     startWorker();
@@ -300,7 +300,7 @@ void CaaiTest::handlePostDrop(pcpp::Packet* prev) {
   std::uint32_t pktSeq = ntohl(prev->getLayerOfType<pcpp::TcpLayer>()
     ->getTcpHeader()->sequenceNumber);
 
-  if (maxSeenAfterRto + 10 * mss < pktSeq) {
+  if ((maxSeenAfterRto + 10 * mss < pktSeq) && curRttCount < 3) {
     sendDupAck(prev);
   } else {
     maxSeenAfterRto = pktSeq;
