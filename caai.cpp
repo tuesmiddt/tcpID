@@ -82,7 +82,7 @@ std::string CaaiTest::makeGetStr() {
 void CaaiTest::reassemblyCallback(
     int side, pcpp::TcpStreamData data, void* cookie) {
   CaaiTest* curTest = static_cast<CaaiTest*>(cookie);
-  if (data.getConnectionData().dstIP.toString().compare(
+  if (data.getConnectionData().dstIP->toString().compare(
         curTest->session->srcIP) == 0) {
     char* dataPtr = reinterpret_cast<char*>(data.getData());
     curTest->rcvBuffer.write(dataPtr, data.getDataLength());
