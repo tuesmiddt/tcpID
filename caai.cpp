@@ -173,8 +173,8 @@ void CaaiTest::sendPacketQueue() {
           session->sendTcp(sendQueue.front().first, sendQueue.front().second);
           sendQueue.pop();
         } else {
-          delete sendQueue.front().first;
-          delete sendQueue.front().second;
+          // delete sendQueue.front().first;
+          // delete sendQueue.front().second;
           sendQueue.pop();
         }
       }
@@ -300,7 +300,7 @@ void CaaiTest::handlePostDrop(pcpp::Packet* prev) {
   std::uint32_t pktSeq = ntohl(prev->getLayerOfType<pcpp::TcpLayer>()
     ->getTcpHeader()->sequenceNumber);
 
-  if (maxSeenAfterRto + 10 * mss < pktSeq) {
+  if (maxSeenAfterRto + 10 * mss < pktSeq && curRttCount < 3) {
     sendDupAck(prev);
   } else {
     maxSeenAfterRto = pktSeq;
@@ -329,7 +329,7 @@ void CaaiTest::sendAck(pcpp::Packet* prev) {
 
   int prevDataLen = getDataLen(prev);
   if (prevDataLen == 0) {
-    delete tcpLayer;
+    // delete tcpLayer;
     return;
   }
 
@@ -358,7 +358,7 @@ void CaaiTest::sendDupAck(pcpp::Packet* prev) {
 
   int prevDataLen = getDataLen(prev);
   if (prevDataLen == 0) {
-    delete tcpLayer;
+    // delete tcpLayer;
     return;
   }
 
@@ -406,7 +406,7 @@ void CaaiTest::sendData(char* buf, int dataLen) {
   session->seq += req->getDataLen();
 
   enqueuePacket(tcpLayer, req);
-  delete buf;
+  // delete buf;
 }
 
 void CaaiTest::sendRequest(pcpp::Packet* prev) {
@@ -497,7 +497,7 @@ int CaaiTest::getDataLen(pcpp::Packet* p) {
 void CaaiTest::addNopOpt(pcpp::TcpLayer* tcpLayer) {
   std::uint8_t* one = new std::uint8_t(1);
   tcpLayer->addTcpOption(pcpp::PCPP_TCPOPT_NOP, 1, one);
-  delete one;
+  // delete one;
 }
 
 void CaaiTest::startTest() {

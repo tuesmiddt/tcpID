@@ -93,11 +93,11 @@ void TestSession::sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer) {
   dev->sendPacket(p);
 
   // always free packet after sending
-  delete payloadLayer;
-  delete tcpLayer;
-  delete curIPLayer;
-  delete curEthLayer;
-  delete p;
+  // delete payloadLayer;
+  // delete tcpLayer;
+  // delete curIPLayer;
+  // delete curEthLayer;
+  // delete p;
 }
 
 void TestSession::resendLastPacket() {
