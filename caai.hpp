@@ -175,7 +175,7 @@ class CaaiTest {
   bool tsEnabled = false;
   std::uint32_t dropSeq;
   std::uint32_t maxSeenAfterRto;
-  int cwndThresh = 512;
+  int cwndThresh = 256;
   bool workQueue;
   std::uint16_t tcpOptWSize = 65535;
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime;

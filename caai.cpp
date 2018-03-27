@@ -166,17 +166,26 @@ void CaaiTest::sendPacketQueue() {
       unsigned toSend = sendQueue.size();
 
       for (unsigned i = 0; i < toSend; i++) {
+        pcpp::TcpLayer* tcpLayer = sendQueue.front().first;
+        pcpp::Layer* payloadLayer = sendQueue.front().second;
+
         // not sure why acking every other packet is problematic with nus servers
-        // if ((toSend % 2 && i % 2 == 0) || (toSend % 2 == 0 && i % 2)) {
+        if (testState <= SSL_HANDSHAKE || payloadLayer != NULL || // Send if establishing connection or there is data to send
+            (toSend % 2 && i % 2 == 0) || (toSend % 2 == 0 && i % 2) // Send every other packet if no data
+          ) {
         // if (i % 2 || i + 1 == toSend) {
-        if (true) {
-          session->sendTcp(sendQueue.front().first, sendQueue.front().second);
-          sendQueue.pop();
+        // if (true) {
+          // session->sendTcp(sendQueue.front().first, sendQueue.front().second);
+          // sendQueue.pop();
+          session->sendTcp(tcpLayer, payloadLayer);
         } else {
           // delete sendQueue.front().first;
           // delete sendQueue.front().second;
-          sendQueue.pop();
+          // sendQueue.pop();
         }
+
+        sendQueue.pop();
+
       }
     }
   }
