@@ -188,7 +188,7 @@ class CaaiTest {
 
   WOLFSSL_CTX* sslCtx = NULL;
   WOLFSSL* ssl = NULL;
-  std::string caCert = "/etc/ca-certificates/extracted/tls-ca-bundle.pem";
+  std::string caCert = "tls-ca-bundle.pem";
 
   TestSession* session;
   static const int ESTABLISH_SESSION = 1;
