@@ -98,6 +98,16 @@
 #include "PayloadLayer.h"
 #endif
 
+#ifndef CMATH
+#define CMATH
+#include <cmath>
+#endif
+
+#ifndef IOMANIP
+#define IOMANIP
+#include <iomanip>
+#endif
+
 // #ifndef SAFE_QUEUE
 // #define SAFE_QUEUE
 
@@ -144,6 +154,53 @@
 // Include guards work really weirdly with wolfssl for some reason
 #include <wolfssl/ssl.h>
 
+struct Result {
+  int rtt;
+  int cwnd;
+  int dropped;
+  int reordered;
+};
+
+struct DropCounter {
+  std::uint32_t next;
+  int totalReordered;
+  int totalDropped;
+  int prevDataLen;
+  int mss;
+
+  void reset(std::uint32_t seq, int datalen) {
+    next = seq + datalen;
+    prevDataLen = datalen;
+  }
+
+  void record(std::uint32_t seq, int datalen) {
+    if (next == 0) {
+      next = seq;
+      prevDataLen = datalen;
+    } else if (seq < next) {
+      totalReordered++;
+    } else if (seq == next) {
+      next += datalen;
+      prevDataLen = datalen;
+    } else {
+      int segSize = prevDataLen > 0 ? prevDataLen : mss;
+      totalDropped += std::ceil((seq-next)/segSize);
+      next = seq + datalen;
+      prevDataLen = datalen;
+    }
+    // if (maxSeen == 0) {
+    //   maxSeen = seq;
+    // } else if (seq < maxSeen) {
+    //   totalReordered++;
+    // } else if (seq - maxSeen <= datalen || seq-maxSeen == 1) {
+    //   maxSeen = seq;
+    // } else {
+    //   int segSize = datalen > 0 ? datalen : mss;
+    //   totalReordered += std::ceil((seq-maxSeen)/datalen);
+    // }
+  };
+};
+
 class TestSession;
 class CaaiTest {
  public:
@@ -157,12 +214,15 @@ class CaaiTest {
   void startTest();
   bool checkRestartTest();
   bool getTestDone();
+  void cleanUp();
+  void printResults();
 
   // SSL CALLBACKS
   static int sslWriteCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx);
   static int sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx);
 
  private:
+  DropCounter dropCounter = {};
   int connectionAttempts = 0;
   int emuDelay = 1000;  // send Delay in milliseconds
   int sleepCount = 0;
@@ -179,7 +239,7 @@ class CaaiTest {
   bool workQueue;
   std::uint16_t tcpOptWSize = 65535;
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
-  std::vector<std::pair <int, int>> testResults;
+  std::vector<Result> testResults;
 
   std::queue<std::pair <pcpp::TcpLayer*, pcpp::Layer*>> sendQueue;
   std::thread* sendWorker;
@@ -222,7 +282,6 @@ class CaaiTest {
   void handlePreDrop(pcpp::Packet* prev);
   void handlePostDrop(pcpp::Packet* prev);
   void handleDone(pcpp::Packet* prev);
-  void printResults();
   void setupWolfSsl();
   void connectSsl();
 };

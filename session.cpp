@@ -9,6 +9,8 @@ TestSession::TestSession(char* target, int port) {
   setOffloadTypes();
   disableOffload();
   blockRstOut();
+  dumpTcp = true;
+  startTcpDump();
   setIss();
   makeEthLayer();
   makeIPLayer();
@@ -31,6 +33,7 @@ void TestSession::initCapture() {
     //   test->startTest();
     // }
     if (test->getTestDone()) {
+      test->printResults();
       break;
     }
   }
@@ -40,6 +43,47 @@ void TestSession::initCapture() {
 
 void TestSession::addToHistory(History* h, pcpp::Packet* packet) {
   h->push(packet);
+}
+
+void TestSession::startTcpDump() {
+  if (dumpTcp == false) {
+    return;
+  }
+  tcpDumpThread = new std::thread(&TestSession::runTcpDump, this);
+}
+
+void TestSession::runTcpDump() {
+  if (dumpTcp == false) {
+    return;
+  }
+
+  time_t rawtime;
+  struct tm* timeinfo;
+  char datetime[100];
+
+  time(&rawtime);
+  timeinfo = localtime(&rawtime);
+
+  strftime(datetime,sizeof(datetime),"%d-%m-%Y_%I-%M-%S",timeinfo);
+
+  char filter[400];
+  std::snprintf(filter, sizeof(filter),
+      "tcpdump -s200 -w %s_%s.pcapng 'tcp and (src port %d or dst port %d) and host %s'",
+      dstName.c_str(), datetime, sport, sport, dstIP.c_str());
+  std::cout << filter;
+  system(filter);
+}
+
+void TestSession::stopTcpDump() {
+  if (dumpTcp == false) {
+    return;
+  }
+  char cmd[200];
+  std::snprintf(cmd, sizeof(cmd),
+    "pkill tcpdump"
+  );
+
+  system(cmd);
 }
 
 void TestSession::sessionCallBack(pcpp::RawPacket* packet,
@@ -169,7 +213,8 @@ void TestSession::cleanUp() {
     dev->close();
     enableOffload();
   }
-
+  test->cleanUp();
+  stopTcpDump();
   clearFWRules();
 }
 
@@ -265,7 +310,7 @@ void TestSession::blockRstOut() {
   if (system(rule) == 0) {
     fwRules.push_back(std::string(rule));
   }
-  system("iptables -L");
+  system("iptables -L -n");
 }
 
 void TestSession::clearFWRules() {

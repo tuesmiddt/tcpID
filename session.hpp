@@ -13,6 +13,11 @@
 #include <iostream>
 #endif
 
+#ifndef THREAD
+#define THREAD
+#include <thread>
+#endif
+
 #ifndef ARPA_INET_H
 #define ARPA_INET_H
 #include <arpa/inet.h>
@@ -93,6 +98,11 @@
 #include <vector>
 #endif
 
+#ifndef CTIME
+#define CTIME
+#include <ctime>
+#endif
+
 #ifndef PACKET_H
 #define PACKET_H
 #include "Packet.h"
@@ -151,9 +161,14 @@ class TestSession {
   std::vector<std::string> fwRules;
   History* sendHistory;
   History* receiveHistory;
+  bool dumpTcp;
+  std::thread* tcpDumpThread;
 
   static void sessionCallBack(pcpp::RawPacket* packet,
     pcpp::PcapLiveDevice* dev, void* token);
+  void runTcpDump();
+  void startTcpDump();
+  void stopTcpDump();
   std::string buildFilter();
   void makeEthLayer();
   void makeIPLayer();

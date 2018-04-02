@@ -2,7 +2,7 @@
 #include "session.hpp"
 
 int main() {
-  char target[] = "www.gearbest.com";
+  char target[] = "caprica.d2.comp.nus.edu.sg";
   TestSession session(target, 443);
 
   std::cout << session.srcIP;

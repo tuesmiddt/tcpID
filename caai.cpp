@@ -4,6 +4,7 @@
 CaaiTest::CaaiTest(TestSession* testSession) {
   session = testSession;
   mss = 200;
+  dropCounter.mss = mss;
   emuDelay = envB ? 800 : 1000;
   tcpOptMss = htons(mss);
   tcpOptWscale = 14;
@@ -66,8 +67,8 @@ std::string CaaiTest::makeGetStr() {
   std::snprintf(reqStr, sizeof(reqStr),
       // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
       // "GET /sites/default/files/2018-01/2018_Hacker_Report.pdf HTTP/1.1\r\n"
-      // "GET /test.txt HTTP/1.1\r\n"
-      "GET /top-brands/xiaomi/39.html HTTP/1.1\r\n"
+      "GET /test.txt HTTP/1.1\r\n"
+      // "GET /top-brands/xiaomi/39.html HTTP/1.1\r\n"
       // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\n"
       "Host: %s\r\n"
       "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0\r\n"
@@ -213,17 +214,25 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 
   if (tcpLayer->getTcpHeader()->finFlag || tcpLayer->getTcpHeader()->rstFlag) {
     testState = DONE;
-    printResults();
+    // printResults();
     std::cout << "\n\n";
   }
 
   int pktRtt = (std::chrono::high_resolution_clock::now() - startTime) /
       std::chrono::seconds(1);
 
+  dropCounter.record(ntohl(tcpLayer->getTcpHeader()->sequenceNumber), getDataLen(packet));
+
   if (testState != DROP_WAIT) {
     if (pktRtt > curRttCount) {
       std::cout << pktRtt << ": " << curCwnd << "\n";
-      testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
+      Result res = {
+        pktRtt,
+        curCwnd,
+        dropCounter.totalDropped,
+        dropCounter.totalReordered
+      };
+      testResults.push_back(res);
 
       if (testState == PRE_DROP && pktRtt == 4) {
         emuDelay = 1000;
@@ -235,7 +244,6 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
 
       if (curCwnd >= cwndThresh && testState < DROP_WAIT) {
         // std::printf("DROPPING\n");
-        testResults.push_back(std::pair<int, int>(0, 0));  // Mark drop
         testState = DROP_WAIT;
         dropSeq = ntohl(tcpLayer->getTcpHeader()->sequenceNumber);
         maxSeenAfterRto = dropSeq;
@@ -249,20 +257,43 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
     } else {
       curCwnd++;
     }
-  // } else if (resent < 1 &&
-  //     ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
-  //   std::cout << pktRtt << ": " << curCwnd << "\n";
-  //   testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
-  //   resent++;
-  //   session->resendLastPacket();  // described in paper to deal with f-rto but wonky
-  } else if (ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+  } else if (resent < 1 &&
+      ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+    dropCounter.totalReordered--; //RTOs get counted as reordering
     std::cout << pktRtt << ": " << curCwnd << "\n";
-    testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
+      Result res = {
+        pktRtt,
+        curCwnd,
+        dropCounter.totalDropped,
+        dropCounter.totalReordered
+      };
+    testResults.push_back(res);
+    resent++;
+    session->resendLastPacket();  // described in paper to deal with f-rto but wonky
+  } else if (ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+    // std::cout << pktRtt << ": " << curCwnd << "\n";
+    // Result res = {
+    //   pktRtt,
+    //   curCwnd,
+    //   dropCounter.totalDropped,
+    //   dropCounter.totalReordered
+    // };
+    // testResults.push_back(res);
     testState = POST_DROP;
     curCwnd = 1;
+    dropCounter.totalReordered--; //RTOs get counted as reordering
+    dropCounter.reset(ntohl(tcpLayer->getTcpHeader()->sequenceNumber), getDataLen(packet));
+
+    Result rtoMarker = { 0, 0, 0, 0 };
+    testResults.push_back(rtoMarker);
     startWorker();
   } else {
     curCwnd++;
+  }
+
+  if (testState == POST_DROP && pktRtt >= 36 && curCwnd != 1) {
+    testState = DONE;
+    return;
   }
 
   handlePacket(packet);
@@ -522,6 +553,10 @@ void CaaiTest::startTest() {
   sendSyn();
 }
 
+void CaaiTest::cleanUp() {
+  stopWorker();
+}
+
 bool CaaiTest::checkRestartTest() {
   return testState == ESTABLISH_SESSION ? true : false;
 }
@@ -541,7 +576,11 @@ void CaaiTest::printResults() {
   //   std::printf("%s", printer);
   // }
 
-  for (std::pair<int, int> p : testResults) {
-    std::printf("RTT: %d, CWND: %d\n", p.first, p.second);
+  for (Result r : testResults) {
+    std::cout << "RTT: " << std::left << std::setw(5) << r.rtt << ", "
+              << "CWND: " << std::left << std::setw(5) << r.cwnd << ", "
+              << "CUMULATIVE LOST: " << std::left << std::setw(5) << r.dropped << ", "
+              << "CUMULATIVE REORDERED: " << std::left << std::setw(5) << r.reordered << "\n";
+    // std::printf("RTT: %d, CWND: %d, CUMULATIVE LOST: %d, CUMULATIVE REORDERED:%d\n", r.rtt, r.cwnd, r.dropped, r.reordered);
   }
 }
