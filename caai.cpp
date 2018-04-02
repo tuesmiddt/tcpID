@@ -66,7 +66,8 @@ std::string CaaiTest::makeGetStr() {
   std::snprintf(reqStr, sizeof(reqStr),
       // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
       // "GET /sites/default/files/2018-01/2018_Hacker_Report.pdf HTTP/1.1\r\n"
-      "GET /test.txt HTTP/1.1\r\n"
+      // "GET /test.txt HTTP/1.1\r\n"
+      "GET /top-brands/xiaomi/39.html HTTP/1.1\r\n"
       // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\n"
       "Host: %s\r\n"
       "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0\r\n"
@@ -248,14 +249,20 @@ void CaaiTest::testCallBack(pcpp::Packet* packet) {
     } else {
       curCwnd++;
     }
-  } else if (resent < 1 &&
-      ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
-    resent++;
-    session->resendLastPacket();  // described in paper to deal with f-rto but wonky
+  // } else if (resent < 1 &&
+  //     ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+  //   std::cout << pktRtt << ": " << curCwnd << "\n";
+  //   testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
+  //   resent++;
+  //   session->resendLastPacket();  // described in paper to deal with f-rto but wonky
   } else if (ntohl(tcpLayer->getTcpHeader()->sequenceNumber) == dropSeq) {
+    std::cout << pktRtt << ": " << curCwnd << "\n";
+    testResults.push_back(std::pair<int, int>(pktRtt, curCwnd));
     testState = POST_DROP;
+    curCwnd = 1;
     startWorker();
-    // return;
+  } else {
+    curCwnd++;
   }
 
   handlePacket(packet);
