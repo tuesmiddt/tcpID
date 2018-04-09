@@ -1,9 +1,31 @@
 #include "main.hpp"
 #include "session.hpp"
+#include "unistd.h"
 
-int main() {
-  char target[] = "caprica.d2.comp.nus.edu.sg";
-  TestSession session(target, 443);
+
+
+int main(int argc, char **argv) {
+  char *target = NULL;
+  bool dumpTCP = false;
+  int c;
+
+
+/* Parse command line arguments. */
+  while ((c = getopt(argc, argv, ":d")) != -1)
+      switch (c) {
+          case 'd':
+              dumpTCP = true;
+              break;
+          default:
+              abort();
+      }
+
+  if (argc - optind == 1)
+      target = argv[optind];
+  else
+      abort();
+
+  TestSession session(target, 443, dumpTCP);
 
   std::cout << session.srcIP;
   std::cout << "\n";

@@ -147,7 +147,7 @@ class TestSession {
       pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
   pcpp::IPv4Layer* ipLayer;
 
-  TestSession(char* target, int port);
+  TestSession(char* target, int port, bool dumpTCP);
   void cleanUp();
   void initCapture();
   void addToHistory(History* h, pcpp::Packet* packet);
@@ -161,7 +161,7 @@ class TestSession {
   std::vector<std::string> fwRules;
   History* sendHistory;
   History* receiveHistory;
-  bool dumpTcp;
+  bool dumpTCP;
   std::thread* tcpDumpThread;
 
   static void sessionCallBack(pcpp::RawPacket* packet,

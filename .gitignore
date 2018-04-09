@@ -1,3 +1,4 @@
+tcpID
 .depend
-*.pcapng
-blah/*
+*.pcap
+*.o
