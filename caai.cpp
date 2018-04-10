@@ -134,7 +134,7 @@ int CaaiTest::sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx) {
   while (read == 0) {
     read = curTest->rcvBuffer.readsome(buf, sz);
   }
-  // std::cout << "readbuf position after read: " << curTest->rcvBuffer.tellg() << "\n";\
+  // std::cout << "readbuf position after read: " << curTest->rcvBuffer.tellg() << "\n";
   // std::cout << "read bytes count: " << read << "\n";
 
 
