@@ -122,6 +122,7 @@ class CaaiTest;
 class TestSession {
  public:
   std::string dstName;
+  std::string dstFile;
 
   std::string srcIP;
   std::string dstIP;
@@ -180,7 +181,7 @@ class TestSession {
   void enableOffload();
   void setIface();
   void setSrcInfo();
-  void setDstInfo(char *target, int port);
+  void setDstInfo(char *target);
 };
 
 #endif  // SESSION_HPP_

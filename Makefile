@@ -1,4 +1,5 @@
-include /home/zixiao/repos/PcapPlusPlus/Dist/mk/PcapPlusPlus.mk
+# include /home/zixiao/repos/PcapPlusPlus/Dist/mk/PcapPlusPlus.mk
+include $(PCPP_PATH)/Dist/mk/PcapPlusPlus.mk
 
 appname := tcpID
 

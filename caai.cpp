@@ -65,17 +65,14 @@ std::string CaaiTest::makeGetStr() {
   char reqStr[500];
 
   std::snprintf(reqStr, sizeof(reqStr),
-      // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
-      // "GET /sites/default/files/2018-01/2018_Hacker_Report.pdf HTTP/1.1\r\n"
-      "GET /test.txt HTTP/1.1\r\n"
-      // "GET /top-brands/xiaomi/39.html HTTP/1.1\r\n"
-      // "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\n"
+      "GET /%s HTTP/1.1\r\n"
       "Host: %s\r\n"
       "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0\r\n"
       "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
       "Accept-Language: en-US,en;q=0.5\r\n"
       "Cache-Control: max-age=0\r\n"
       "\r\n",
+      session->dstFile.c_str(),
       session->dstName.c_str());
   // std::cout << reqStr;
   return std::string(reqStr);

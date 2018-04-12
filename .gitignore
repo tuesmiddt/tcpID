@@ -2,3 +2,4 @@ tcpID
 .depend
 *.pcap
 *.o
+*.txt

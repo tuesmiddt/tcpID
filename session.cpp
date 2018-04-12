@@ -4,7 +4,7 @@
 
 TestSession::TestSession(char* target, int port, bool dumpTCP) {
   setSrcInfo();
-  setDstInfo(target, port);
+  setDstInfo(target);
   setIface();
   setOffloadTypes();
   disableOffload();
@@ -219,7 +219,32 @@ void TestSession::cleanUp() {
 }
 
 
-void TestSession::setDstInfo(char* target, int port) {
+void TestSession::setDstInfo(char* target) {
+  char* token;
+  char** processed =  new char*[3];
+  const char* delim = "/";
+  token = strtok(target, delim);
+
+  for (int i = 0; i < 3; i++) {
+    if (token == NULL) {
+      break;
+    }
+    processed[i] = token;
+    token = strtok(NULL, delim);
+  }
+
+  if (strcmp(processed[0], "https:") == 0) {
+    dport = 443;
+  } else {
+    dport = 80;
+  }
+
+  dstName = std::string(processed[1]);
+
+  if (processed[2] != NULL) {
+    dstFile = std::string(processed[2]);
+  }
+
   struct addrinfo hints, *res;
   struct sockaddr_in targetAddr;
   memset(&hints, 0, sizeof(hints));
@@ -227,16 +252,13 @@ void TestSession::setDstInfo(char* target, int port) {
   hints.ai_flags = AI_PASSIVE & AI_CANONNAME;
   hints.ai_socktype = SOCK_STREAM;
 
-  if (getaddrinfo(target, NULL, &hints, &res) != 0) {
+  if (getaddrinfo(dstName.c_str(), NULL, &hints, &res) != 0) {
     std::cerr << "Could not get dst info\n";
     exit(-1);
   }
   targetAddr = *(reinterpret_cast<struct sockaddr_in*>(res->ai_addr));
   dstIP = std::string(inet_ntoa(targetAddr.sin_addr));
   dst = ntohl(targetAddr.sin_addr.s_addr);
-  dport = static_cast<std::uint16_t>(port);
-
-  dstName = std::string(target);
 }
 
 

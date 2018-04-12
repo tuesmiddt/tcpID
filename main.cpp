@@ -1,8 +1,7 @@
 #include "main.hpp"
 #include "session.hpp"
 #include "unistd.h"
-
-
+#include <string.h>
 
 int main(int argc, char **argv) {
   char *target = NULL;
@@ -11,7 +10,7 @@ int main(int argc, char **argv) {
 
 
 /* Parse command line arguments. */
-  while ((c = getopt(argc, argv, ":d")) != -1)
+  while ((c = getopt(argc, argv, ":t:ds")) != -1)
       switch (c) {
           case 'd':
               dumpTCP = true;
