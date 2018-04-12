@@ -108,6 +108,11 @@
 #include <iomanip>
 #endif
 
+#ifndef STRINGH
+#define STRINGH
+#include <string.h>
+#endif
+
 // #ifndef SAFE_QUEUE
 // #define SAFE_QUEUE
 
@@ -233,6 +238,7 @@ class CaaiTest {
   int resent = 0;
   bool envB = false;
   bool tsEnabled = false;
+  bool https = false;
   std::uint32_t dropSeq;
   std::uint32_t maxSeenAfterRto;
   int cwndThresh = 256;

@@ -3,6 +3,7 @@
 
 CaaiTest::CaaiTest(TestSession* testSession) {
   session = testSession;
+  https = session->dport == 443 ? true : false;
   mss = 200;
   dropCounter.mss = mss;
   emuDelay = envB ? 800 : 1000;
@@ -172,7 +173,6 @@ void CaaiTest::sendPacketQueue() {
         if (testState <= SSL_HANDSHAKE || payloadLayer != NULL || // Send if establishing connection or there is data to send
             (toSend % 2 && i % 2 == 0) || (toSend % 2 == 0 && i % 2) // Send every other packet if no data
           ) {
-        // if (i % 2 || i + 1 == toSend) {
         // if (true) {
           // session->sendTcp(sendQueue.front().first, sendQueue.front().second);
           // sendQueue.pop();
@@ -323,17 +323,22 @@ void CaaiTest::handleEstablishSession(pcpp::Packet* prev) {
   }
 
   if (prevHeader->synFlag && prevHeader->ackFlag) {
-    // sendRequest(prev);
-    sendAck(prev);
-    std::thread* sslConn = new std::thread(&CaaiTest::connectSsl, this);
-    sslConn-> detach();
+    if (https) {
+      sendAck(prev);
+      std::thread* sslConn = new std::thread(&CaaiTest::connectSsl, this);
+      sslConn-> detach();
+    } else {
+      sendRequest(prev);
+    }
     testState = SSL_HANDSHAKE;
   }
 }
 
 void CaaiTest::handleSslHandshake(pcpp::Packet* prev) {
   sendAck(prev);
-  // testState = PRE_DROP;
+  if (!https) {
+    testState = PRE_DROP;
+  }
 }
 
 void CaaiTest::handlePreDrop(pcpp::Packet* prev) {
@@ -472,19 +477,15 @@ void CaaiTest::sendRequest(pcpp::Packet* prev) {
       prevDataLen + prevTcp->getTcpHeader()->synFlag);
   header->ackFlag = 1;
 
-  char reqStr[200];
-
-  std::snprintf(reqStr, sizeof(reqStr),
-    "GET /~stevenha/database/Art_of_Programming_Contest_SE_for_uva.pdf HTTP/1.1\r\nHost: %s\r\n\r\n",
-    session->dstName.c_str());
+  std::string reqStr = makeGetStr();
+  char* reqCStr = strdup(reqStr.c_str());
 
   pcpp::PayloadLayer* req = new pcpp::PayloadLayer(
-    reinterpret_cast<std::uint8_t*>(reqStr), std::strlen(reqStr), true);
+    reinterpret_cast<std::uint8_t*>(reqCStr), std::strlen(reqCStr), true);
 
   session->seq += req->getDataLen();
 
   enqueuePacket(tcpLayer, req);
-  // enqueuePacket(tcpLayer, NULL);
 }
 
 void CaaiTest::sendSyn() {

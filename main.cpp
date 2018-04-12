@@ -24,6 +24,11 @@ int main(int argc, char **argv) {
   else
       abort();
 
+  /**
+   * Target should be in this format:
+   * https://www.hostname.com/path/to/file
+   * http://www.hostname.com
+   */
   TestSession session(target, 443, dumpTCP);
 
   std::cout << session.srcIP;
