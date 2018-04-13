@@ -218,8 +218,8 @@ void TestSession::cleanUp() {
   clearFWRules();
 }
 
-
 void TestSession::setDstInfo(char* target) {
+  char* copy = strdup(target);
   char* token;
   char** processed =  new char*[3];
   const char* delim = "/";
@@ -242,7 +242,7 @@ void TestSession::setDstInfo(char* target) {
   dstName = std::string(processed[1]);
 
   if (processed[2] != NULL) {
-    dstFile = std::string(processed[2]);
+    dstFile = std::string(strstr(copy, processed[2]));
   }
 
   struct addrinfo hints, *res;
