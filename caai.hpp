@@ -113,45 +113,6 @@
 #include <string.h>
 #endif
 
-// #ifndef SAFE_QUEUE
-// #define SAFE_QUEUE
-
-// #ifndef MUTEX
-// #define MUTEX
-// #include <mutex>
-// #endif
-
-// #ifndef QUEUE
-// #define QUEUE
-// #include <queue>
-// #endif
-
-// #ifndef CONDITION_VARIABLE
-// #define CONDITION_VARIABLE
-// #include <condition_variable>
-// #endif
-
-// template <class T> class SafeQueue {
-//  public:
-//   SafeQueue(): q(), m(), c() {}
-
-//   void enqueue(T ) {
-//     std::unique_lock<std::mutex> lock(m);
-//     q.push(t);
-//   }
-
-//   void dequeue() {
-
-//   }
-
-
-//  private:
-//   std::queue<T> q;
-//   mutable std::mutex m;
-//   std::condition_variable c;
-// };
-
-// #endif  // SAFE_QUEUE_
 
 #ifndef CAAI_HPP
 #define CAAI_HPP
@@ -179,30 +140,24 @@ struct DropCounter {
   }
 
   void record(std::uint32_t seq, int datalen) {
+    // First packet
     if (next == 0) {
       next = seq;
       prevDataLen = datalen;
+    // Packet < max seen
     } else if (seq < next) {
       totalReordered++;
+    // Packet is exactly expected
     } else if (seq == next) {
       next += datalen;
       prevDataLen = datalen;
+    // Packet is missing
     } else {
       int segSize = prevDataLen > 0 ? prevDataLen : mss;
       totalDropped += std::ceil((seq-next)/segSize);
       next = seq + datalen;
       prevDataLen = datalen;
     }
-    // if (maxSeen == 0) {
-    //   maxSeen = seq;
-    // } else if (seq < maxSeen) {
-    //   totalReordered++;
-    // } else if (seq - maxSeen <= datalen || seq-maxSeen == 1) {
-    //   maxSeen = seq;
-    // } else {
-    //   int segSize = datalen > 0 ? datalen : mss;
-    //   totalReordered += std::ceil((seq-maxSeen)/datalen);
-    // }
   };
 };
 
@@ -210,9 +165,6 @@ class TestSession;
 class CaaiTest {
  public:
   int testState = 1;
-
-  std::uint16_t tcpOptMss;
-  std::uint16_t tcpOptWscale;
 
   explicit CaaiTest(TestSession *);
   void testCallBack(pcpp::Packet* packet);
@@ -229,21 +181,31 @@ class CaaiTest {
  private:
   DropCounter dropCounter = {};
   int connectionAttempts = 0;
+
   int emuDelay = 1000;  // send Delay in milliseconds
   int sleepCount = 0;
   int sleepInterval = 100;  // check for changes to send delay every 100 milliseconds
+
   int curRttCount = 0;
   int curCwnd = 0;
+  std::uint32_t dropSeq;
+  std::uint32_t maxSeenAfterRto;
+  // mss for pcpp. opts need to be uint16_t
+  std::uint16_t tcpOptMss;
+  // wscale opt for pcpp
+  std::uint16_t tcpOptWscale;
+  // wsize for pcpp
+  std::uint16_t tcpOptWSize = 65535;
+
   int mss;
   int resent = 0;
   bool envB = false;
+  int cwndThresh = 256;
+
   bool tsEnabled = false;
   bool https = false;
-  std::uint32_t dropSeq;
-  std::uint32_t maxSeenAfterRto;
-  int cwndThresh = 256;
+
   bool workQueue;
-  std::uint16_t tcpOptWSize = 65535;
   std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
   std::vector<Result> testResults;
 
