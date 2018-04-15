@@ -3,6 +3,12 @@
 #include "unistd.h"
 #include <string.h>
 
+/**
+ * Parse command line options and executes test.
+ * Example formats:
+ * tcpID https://www.hostname.com/path/to/file -d
+ * tcpID http://www.hostname.com
+ */
 int main(int argc, char **argv) {
   char *target = NULL;
   bool dumpTCP = false;
@@ -10,7 +16,7 @@ int main(int argc, char **argv) {
 
 
 /* Parse command line arguments. */
-  while ((c = getopt(argc, argv, ":t:ds")) != -1)
+  while ((c = getopt(argc, argv, ":ds")) != -1)
       switch (c) {
           case 'd':
               dumpTCP = true;
@@ -24,12 +30,7 @@ int main(int argc, char **argv) {
   else
       abort();
 
-  /**
-   * Target should be in this format:
-   * https://www.hostname.com/path/to/file
-   * http://www.hostname.com
-   */
-  TestSession session(target, 443, dumpTCP);
+  TestSession session(target, dumpTCP);
 
   std::cout << session.srcIP;
   std::cout << "\n";

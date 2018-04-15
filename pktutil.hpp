@@ -43,7 +43,6 @@
 
 namespace PktUtil {
   void printPktInfo(pcpp::Packet* packet);
-  std::string printTcpOptionType(pcpp::TcpOption optionType);
   std::string printTcpFlags(pcpp::TcpLayer* tcpLayer);
 }
 

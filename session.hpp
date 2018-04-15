@@ -148,9 +148,9 @@ class TestSession {
       pcpp::MacAddress::Zero, pcpp::MacAddress::Zero);
   pcpp::IPv4Layer* ipLayer;
 
-  TestSession(char* target, int port, bool dumpTCP);
+  TestSession(char* target, bool dumpTCP);
   void cleanUp();
-  void initCapture();
+  void initTest();
   void addToHistory(History* h, pcpp::Packet* packet);
   void sendTcp(pcpp::TcpLayer* tcpLayer, pcpp::Layer* payloadLayer);
   void updateMaxSeen(pcpp::TcpLayer* prev);

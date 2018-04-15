@@ -1,5 +1,9 @@
 #include "pktutil.hpp"
 
+/**
+ * Print debug information about a packet
+ * @param packet Packet.
+ */
 void PktUtil::printPktInfo(pcpp::Packet* packet) {
   pcpp::EthLayer* ethernetLayer = packet->getLayerOfType<pcpp::EthLayer>();
   printf("\nSource MAC address: %s\n",
@@ -29,24 +33,7 @@ void PktUtil::printPktInfo(pcpp::Packet* packet) {
       static_cast<int>(ntohs(tcpLayer->getTcpHeader()->windowSize)));
   printf("TCP flags: %s\n", printTcpFlags(tcpLayer).c_str());
 
-  printf("TCP options: ");
-  for (pcpp::TcpOptionData* tcpOption = tcpLayer->getFirstTcpOptionData();
-      tcpOption != NULL;
-      tcpOption = tcpLayer->getNextTcpOptionData(tcpOption)) {
-    printf("%s ", printTcpOptionType(tcpOption->getType()).c_str());
-  }
   printf("\n");
-}
-
-std::string PktUtil::printTcpOptionType(pcpp::TcpOption optionType) {
-  switch (optionType) {
-    case pcpp::PCPP_TCPOPT_NOP:
-      return "NOP";
-    case pcpp::PCPP_TCPOPT_TIMESTAMP:
-      return "Timestamp";
-    default:
-      return "Other";
-  }
 }
 
 std::string PktUtil::printTcpFlags(pcpp::TcpLayer* tcpLayer) {
