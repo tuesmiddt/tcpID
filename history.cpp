@@ -34,7 +34,7 @@ pcpp::Packet* History::getMax() {
 }
 
 
-
+// These two methods were created to facilitate computing of RTT.
 std::chrono::time_point<std::chrono::high_resolution_clock>
     History::getTimeBySeq(std::uint32_t key) {
   auto res = store.find(key);
@@ -49,6 +49,7 @@ std::chrono::time_point<std::chrono::high_resolution_clock>
   auto iter = store.rbegin();
   int i = 0;
 
+  // Only checks most recent 3000 packets.
   while (i < 3000 && iter != store.rend()) {
     if (ntohl(std::get<0>(iter->second)
         ->getLayerOfType<pcpp::TcpLayer>()

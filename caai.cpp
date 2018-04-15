@@ -274,7 +274,7 @@ void CaaiTest::enqueuePacket(pcpp::TcpLayer* tcpLayer,
  * Callback that is used whenever an incoming packet belonging to our experiment
  * is captured.
  *
- * @param packet Raw packet that was captured.
+ * @param packet Parsed packet that was captured.
  */
 void CaaiTest::testCallBack(pcpp::Packet* packet) {
   pcpp::TcpLayer* tcpLayer = packet
