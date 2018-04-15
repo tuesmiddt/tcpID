@@ -179,7 +179,11 @@ class CaaiTest {
   static int sslReadCallback(WOLFSSL* ssl, char* buf, int sz, void* ctx);
 
  private:
+  TestSession* session;
+
   DropCounter dropCounter = {};
+  std::vector<Result> testResults;
+
   int connectionAttempts = 0;
 
   int emuDelay = 1000;  // send Delay in milliseconds
@@ -190,6 +194,8 @@ class CaaiTest {
   int curCwnd = 0;
   std::uint32_t dropSeq;
   std::uint32_t maxSeenAfterRto;
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+
   // mss for pcpp. opts need to be uint16_t
   std::uint16_t tcpOptMss;
   // wscale opt for pcpp
@@ -202,15 +208,15 @@ class CaaiTest {
   bool envB = false;
   int cwndThresh = 256;
 
+  // Is timestamps enabled for remote
   bool tsEnabled = false;
+  // Use https or not
   bool https = false;
 
   bool workQueue;
-  std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
-  std::vector<Result> testResults;
-
   std::queue<std::pair <pcpp::TcpLayer*, pcpp::Layer*>> sendQueue;
   std::thread* sendWorker;
+
   pcpp::TcpReassembly* streamReassembly;
   std::stringstream rcvBuffer;
 
@@ -218,7 +224,6 @@ class CaaiTest {
   WOLFSSL* ssl = NULL;
   std::string caCert = "tls-ca-bundle.pem";
 
-  TestSession* session;
   static const int ESTABLISH_SESSION = 1;
   static const int SSL_HANDSHAKE = 2;
   static const int PRE_DROP = 3;
