@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 
 
 /* Parse command line arguments. */
-  while ((c = getopt(argc, argv, ":ds")) != -1)
+  while ((c = getopt(argc, argv, ":d")) != -1)
       switch (c) {
           case 'd':
               dumpTCP = true;

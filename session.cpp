@@ -9,7 +9,7 @@ TestSession::TestSession(char* target, bool dumpTCP) {
   setOffloadTypes();
   disableOffload();
   blockRstOut();
-  dumpTCP = dumpTCP;
+  this->dumpTCP = dumpTCP;
   startTcpDump();
   setIss();
   makeEthLayer();
@@ -71,6 +71,7 @@ void TestSession::runTcpDump() {
     return;
   }
 
+
   time_t rawtime;
   struct tm* timeinfo;
   char datetime[100];
@@ -82,7 +83,7 @@ void TestSession::runTcpDump() {
 
   char filter[400];
   std::snprintf(filter, sizeof(filter),
-      "tcpdump -s200 -w %s_%s.pcap 'tcp and (src port %d or dst port %d) and host %s'",
+      "tcpdump -s 200 -w %s_%s.pcapng 'tcp and (src port %d or dst port %d) and host %s'",
       dstName.c_str(), datetime, sport, sport, dstIP.c_str());
   std::cout << filter;
   system(filter);
